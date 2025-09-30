@@ -17,9 +17,7 @@ class ArchidropApp {
     this.getElement('select-input-btn').addEventListener('click', () => {
       this.selectInputFolder();
     });
-    this.getElement('select-dropbox-btn').addEventListener('click', () => {
-      this.selectDropboxFolder();
-    });
+
     
     // Action buttons
     this.getElement('preview-btn').addEventListener('click', () => this.previewFiles());
@@ -52,11 +50,6 @@ class ArchidropApp {
       }
 
       const settings = await electronAPI.getSettings();
-      
-      if (settings.dropboxPath) {
-        this.dropboxPath = settings.dropboxPath;
-        (this.getElement('dropbox-path') as HTMLInputElement).value = settings.dropboxPath;
-      }
       
       if (settings.lastInputPath) {
         this.inputPath = settings.lastInputPath;
@@ -102,42 +95,23 @@ class ArchidropApp {
     }
   }
 
-  private async selectDropboxFolder(): Promise<void> {
-    try {
-      const electronAPI = (window as any).electronAPI;
-      if (!electronAPI) {
-        this.showError('API de Electron no disponible');
-        return;
-      }
 
-      const result = await electronAPI.selectDropboxFolder();
-      
-      if (!result.canceled && result.filePaths.length > 0) {
-        this.dropboxPath = result.filePaths[0];
-        (this.getElement('dropbox-path') as HTMLInputElement).value = this.dropboxPath;
-        this.updateProcessButton();
-      }
-    } catch (error) {
-      console.error('Error selecting Dropbox folder:', error);
-      this.showError('Error al seleccionar la carpeta de Dropbox');
-    }
-  }
 
   private updateProcessButton(): void {
     const previewBtn = this.getElement('preview-btn') as HTMLButtonElement;
     const processBtn = this.getElement('process-btn') as HTMLButtonElement;
     
-    const canProcess = !this.isProcessing && this.inputPath && this.dropboxPath;
+    const canProcess = !this.isProcessing && this.inputPath;
     previewBtn.disabled = !canProcess;
     processBtn.disabled = !canProcess;
   }
 
   private async previewFiles(): Promise<void> {
-    if (!this.inputPath || !this.dropboxPath) return;
+    if (!this.inputPath) return;
 
     try {
       const electronAPI = (window as any).electronAPI;
-      const result = await electronAPI.previewFiles(this.inputPath, this.dropboxPath);
+      const result = await electronAPI.previewFiles(this.inputPath);
 
       if (result.success) {
         this.showPreviewResults(result);
@@ -201,7 +175,7 @@ class ArchidropApp {
   }
 
   private async startProcessing(): Promise<void> {
-    if (this.isProcessing || !this.inputPath || !this.dropboxPath) {
+    if (this.isProcessing || !this.inputPath) {
       return;
     }
 
@@ -214,7 +188,7 @@ class ArchidropApp {
     
     try {
       const electronAPI = (window as any).electronAPI;
-      const result = await electronAPI.startProcessing(this.inputPath, this.dropboxPath);
+      const result = await electronAPI.startProcessing(this.inputPath);
       
       if (result.success) {
         this.showResults(result);
@@ -309,7 +283,6 @@ class ArchidropApp {
       const autoOpen = (this.getElement('auto-open-setting') as HTMLInputElement).checked;
       
       const settings = {
-        dropboxPath: this.dropboxPath,
         lastInputPath: this.inputPath,
         autoOpen: autoOpen
       };

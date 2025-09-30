@@ -55,14 +55,6 @@ ipcMain.handle('select-folder', async () => {
   return result;
 });
 
-ipcMain.handle('select-dropbox-folder', async () => {
-  const result = await dialog.showOpenDialog({
-    properties: ['openDirectory'],
-    title: 'Seleccionar carpeta de Dropbox'
-  });
-  
-  return result;
-});
 
 ipcMain.handle('get-settings', () => {
   return store.get('settings', {
@@ -77,22 +69,22 @@ ipcMain.handle('save-settings', (event, settings) => {
   return true;
 });
 
-ipcMain.handle('preview-files', async (event, inputPath: string, dropboxPath: string) => {
+ipcMain.handle('preview-files', async (event, inputPath: string) => {
   try {
     const { previewFiles } = await import('./services/fileProcessor');
-    return await previewFiles(inputPath, dropboxPath);
+    return await previewFiles(inputPath);
   } catch (error) {
     console.error('Error previewing files:', error);
     return { success: false, error: error instanceof Error ? error.message : 'Error desconocido' };
   }
 });
 
-ipcMain.handle('start-processing', async (event, inputPath: string, dropboxPath: string) => {
+ipcMain.handle('start-processing', async (event, inputPath: string) => {
   try {
     // Import the processing logic
     const { processFiles } = await import('./services/fileProcessor');
     
-    return await processFiles(inputPath, dropboxPath, (progress) => {
+    return await processFiles(inputPath, (progress) => {
       event.sender.send('processing-progress', progress);
     });
   } catch (error) {

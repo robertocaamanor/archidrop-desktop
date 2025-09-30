@@ -1,6 +1,43 @@
 import * as fs from 'fs-extra';
 import * as path from 'path';
 import { spawn } from 'child_process';
+import * as os from 'os';
+
+// Helper function to get Dropbox path
+function getDropboxPath(): string {
+  const userProfile = os.homedir();
+  return path.join(userProfile, 'Dropbox');
+}
+
+// Helper function to safely remove directory with retries
+async function safeRemoveDir(dirPath: string, maxRetries: number = 5): Promise<void> {
+  for (let attempt = 1; attempt <= maxRetries; attempt++) {
+    try {
+      if (await fs.pathExists(dirPath)) {
+        // First, try to ensure all files are moved out
+        const files = await fs.readdir(dirPath);
+        if (files.length > 0) {
+          console.warn(`Directory ${dirPath} still contains ${files.length} files on attempt ${attempt}`);
+        }
+        
+        await fs.remove(dirPath);
+        console.log(`Successfully removed directory: ${dirPath}`);
+      }
+      return; // Success
+    } catch (error) {
+      console.warn(`Attempt ${attempt} to remove ${dirPath} failed:`, error);
+      
+      if (attempt === maxRetries) {
+        console.error(`Failed to remove directory after ${maxRetries} attempts: ${dirPath}`);
+        // Don't throw error, just log it to avoid stopping the entire process
+        return;
+      }
+      
+      // Wait before retry with longer delays for Windows file handle issues
+      await new Promise(resolve => setTimeout(resolve, attempt * 2000));
+    }
+  }
+}
 
 export interface ProcessingProgress {
   current: number;
@@ -36,8 +73,7 @@ export interface PreviewResult {
 }
 
 export async function previewFiles(
-  inputPath: string,
-  dropboxPath: string
+  inputPath: string
 ): Promise<PreviewResult> {
   const result: PreviewResult = {
     success: false,
@@ -52,6 +88,8 @@ export async function previewFiles(
       throw new Error(`La carpeta de entrada no existe: ${inputPath}`);
     }
 
+    // Get Dropbox path and use Archivos folder as destination
+    const dropboxPath = getDropboxPath();
     if (!await fs.pathExists(dropboxPath)) {
       throw new Error(`La carpeta de Dropbox no existe: ${dropboxPath}`);
     }
@@ -137,7 +175,6 @@ async function getAllFiles(dirPath: string): Promise<string[]> {
 
 export async function processFiles(
   inputPath: string, 
-  dropboxPath: string, 
   onProgress: ProgressCallback
 ): Promise<ProcessingResult> {
   const result: ProcessingResult = {
@@ -152,6 +189,8 @@ export async function processFiles(
       throw new Error(`La carpeta de entrada no existe: ${inputPath}`);
     }
 
+    // Get Dropbox path and validate
+    const dropboxPath = getDropboxPath();
     if (!await fs.pathExists(dropboxPath)) {
       throw new Error(`La carpeta de Dropbox no existe: ${dropboxPath}`);
     }
@@ -227,8 +266,17 @@ async function getFilesToProcess(inputPath: string): Promise<string[]> {
     
     if (stat.isFile()) {
       const ext = path.extname(item).toLowerCase();
+      
+      // Check if file has supported extension
       if (supportedExtensions.includes(ext)) {
-        files.push(fullPath);
+        // Also check if filename matches our nomenclature pattern
+        const fileNameWithoutExt = path.basename(item, ext);
+        const parsedInfo = parseFileName(fileNameWithoutExt);
+        
+        // Only include files that match the nomenclature pattern
+        if (parsedInfo) {
+          files.push(fullPath);
+        }
       }
     }
   }
@@ -240,6 +288,13 @@ async function processFile(filePath: string, archivosPath: string): Promise<void
   const fileName = path.basename(filePath, path.extname(filePath));
   const tempDir = path.join(archivosPath, 'temp', fileName);
   
+  // Parse the original filename to get organization info
+  const fileInfo = parseFileName(fileName);
+  
+  if (!fileInfo) {
+    throw new Error(`No se pudo parsear el nombre del archivo: ${fileName}`);
+  }
+  
   try {
     // Create temporary directory
     await fs.ensureDir(tempDir);
@@ -247,17 +302,29 @@ async function processFile(filePath: string, archivosPath: string): Promise<void
     // Extract the file
     await extractFile(filePath, tempDir);
     
-    // Process extracted contents
-    await organizeExtractedFiles(tempDir, archivosPath);
+    // Add delay to ensure extraction is complete and file handles are released
+    await new Promise(resolve => setTimeout(resolve, 1000));
     
-    // Clean up temporary directory
-    await fs.remove(tempDir);
+    // Verify extraction was successful
+    const extractedFiles = await fs.readdir(tempDir);
+    if (extractedFiles.length === 0) {
+      throw new Error('No se extrajeron archivos del archivo comprimido');
+    }
+    
+    console.log(`Extracted ${extractedFiles.length} items from ${path.basename(filePath)}`);
+    
+    // Process extracted contents using the parsed info from original filename
+    await organizeExtractedFiles(tempDir, archivosPath, fileInfo);
+    
+    // Add delay to ensure all file operations are complete
+    await new Promise(resolve => setTimeout(resolve, 500));
+    
+    // Clean up temporary directory with retries
+    await safeRemoveDir(tempDir);
     
   } catch (error) {
-    // Clean up on error
-    if (await fs.pathExists(tempDir)) {
-      await fs.remove(tempDir);
-    }
+    // Clean up on error with retries
+    await safeRemoveDir(tempDir);
     throw error;
   }
 }
@@ -335,49 +402,44 @@ async function extractWithPowerShell(filePath: string, outputDir: string): Promi
   });
 }
 
-async function organizeExtractedFiles(tempDir: string, archivosPath: string): Promise<void> {
+async function organizeExtractedFiles(tempDir: string, archivosPath: string, fileInfo: FileInfo): Promise<void> {
   const files = await fs.readdir(tempDir);
+  
+  // Create month name in Spanish
+  const monthNames = [
+    '', 'Enero', 'Febrero', 'Marzo', 'Abril', 'Mayo', 'Junio',
+    'Julio', 'Agosto', 'Septiembre', 'Octubre', 'Noviembre', 'Diciembre'
+  ];
+  
+  const monthName = monthNames[fileInfo.month];
+  const monthFolder = `${fileInfo.month.toString().padStart(2, '0')} - ${monthName}`;
+  
+  // Create directory structure: YYYY > MM - MonthName > DiaryName  
+  const targetDir = path.join(
+    archivosPath,
+    fileInfo.year.toString(),
+    monthFolder,
+    fileInfo.diary
+  );
+  
+  console.log(`Creating directory structure: ${targetDir}`);
+  await fs.ensureDir(targetDir);
   
   for (const file of files) {
     const filePath = path.join(tempDir, file);
     const stat = await fs.stat(filePath);
     
     if (stat.isFile()) {
-      // Try to determine the date and diary name from filename
-      const fileInfo = parseFileName(file);
+      const targetPath = path.join(targetDir, file);
       
-      if (fileInfo) {
-        // Create month name in Spanish
-        const monthNames = [
-          '', 'Enero', 'Febrero', 'Marzo', 'Abril', 'Mayo', 'Junio',
-          'Julio', 'Agosto', 'Septiembre', 'Octubre', 'Noviembre', 'Diciembre'
-        ];
-        
-        const monthName = monthNames[fileInfo.month];
-        const monthFolder = `${fileInfo.month.toString().padStart(2, '0')} - ${monthName}`;
-        
-        // Create directory structure: YYYY > MM - MonthName > DiaryName
-        const targetDir = path.join(
-          archivosPath,
-          fileInfo.year.toString(),
-          monthFolder,
-          fileInfo.diary
-        );
-        
-        console.log(`Creating directory structure: ${targetDir}`);
-        await fs.ensureDir(targetDir);
-        const targetPath = path.join(targetDir, file);
-        
-        console.log(`Moving file from ${filePath} to ${targetPath}`);
-        // Move the file to the organized location
-        await fs.move(filePath, targetPath, { overwrite: true });
-      } else {
-        // If we can't parse the filename, put it in an "unknown" folder
-        const unknownDir = path.join(archivosPath, 'unknown');
-        await fs.ensureDir(unknownDir);
-        const targetPath = path.join(unknownDir, file);
-        await fs.move(filePath, targetPath, { overwrite: true });
-      }
+      console.log(`Moving file from ${filePath} to ${targetPath}`);
+      // Move the file to the organized location
+      await fs.move(filePath, targetPath, { overwrite: true });
+    } else if (stat.isDirectory()) {
+      // If it's a directory, move it recursively
+      const targetDirPath = path.join(targetDir, file);
+      console.log(`Moving directory from ${filePath} to ${targetDirPath}`);
+      await fs.move(filePath, targetDirPath, { overwrite: true });
     }
   }
 }

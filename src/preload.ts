@@ -4,13 +4,12 @@ import { contextBridge, ipcRenderer } from 'electron';
 // the ipcRenderer without exposing the entire object
 contextBridge.exposeInMainWorld('electronAPI', {
   selectFolder: () => ipcRenderer.invoke('select-folder'),
-  selectDropboxFolder: () => ipcRenderer.invoke('select-dropbox-folder'),
   getSettings: () => ipcRenderer.invoke('get-settings'),
   saveSettings: (settings: any) => ipcRenderer.invoke('save-settings', settings),
-  previewFiles: (inputPath: string, dropboxPath: string) =>
-    ipcRenderer.invoke('preview-files', inputPath, dropboxPath),
-  startProcessing: (inputPath: string, dropboxPath: string) => 
-    ipcRenderer.invoke('start-processing', inputPath, dropboxPath),
+  previewFiles: (inputPath: string) =>
+    ipcRenderer.invoke('preview-files', inputPath),
+  startProcessing: (inputPath: string) => 
+    ipcRenderer.invoke('start-processing', inputPath),
   
   // Listen for processing progress updates
   onProcessingProgress: (callback: (progress: any) => void) => {
