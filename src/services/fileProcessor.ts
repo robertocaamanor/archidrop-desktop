@@ -373,7 +373,7 @@ async function organizeExtractedFiles(tempDir: string, archivosPath: string): Pr
         await fs.move(filePath, targetPath, { overwrite: true });
       } else {
         // If we can't parse the filename, put it in an "unknown" folder
-        const unknownDir = path.join(dropboxPath, 'unknown');
+        const unknownDir = path.join(archivosPath, 'unknown');
         await fs.ensureDir(unknownDir);
         const targetPath = path.join(unknownDir, file);
         await fs.move(filePath, targetPath, { overwrite: true });

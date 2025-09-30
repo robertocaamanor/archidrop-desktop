@@ -50,19 +50,24 @@
                             </div>
                         </div>
 
-                        <!-- Dropbox Folder Selection -->
+                        <!-- Dropbox Info -->
                         <div class="mb-6">
-                            <label class="block text-sm font-medium text-gray-700 mb-2">
-                                Carpeta de Dropbox de destino
-                            </label>
-                            <div class="flex rounded-md shadow-sm">
-                                <input type="text" id="dropbox-path" readonly 
-                                       class="flex-1 min-w-0 block w-full px-3 py-2 rounded-none rounded-l-md border border-gray-300 bg-gray-50 text-gray-900 focus:ring-blue-500 focus:border-blue-500 sm:text-sm" 
-                                       placeholder="Selecciona la carpeta de Dropbox...">
-                                <button id="select-dropbox-btn" 
-                                        class="inline-flex items-center px-3 py-2 border border-l-0 border-gray-300 rounded-r-md bg-gray-50 text-gray-500 text-sm hover:bg-gray-100 focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-blue-500">
-                                    Examinar
-                                </button>
+                            <div class="bg-blue-50 p-4 rounded-md">
+                                <div class="flex">
+                                    <div class="flex-shrink-0">
+                                        <svg class="h-5 w-5 text-blue-400" fill="currentColor" viewBox="0 0 20 20">
+                                            <path fill-rule="evenodd" d="M18 10a8 8 0 11-16 0 8 8 0 0116 0zm-7-4a1 1 0 11-2 0 1 1 0 012 0zM9 9a1 1 0 000 2v3a1 1 0 001 1h1a1 1 0 100-2v-3a1 1 0 00-1-1H9z" clip-rule="evenodd"></path>
+                                        </svg>
+                                    </div>
+                                    <div class="ml-3">
+                                        <h3 class="text-sm font-medium text-blue-800">
+                                            Destino automático
+                                        </h3>
+                                        <div class="mt-2 text-sm text-blue-700">
+                                            <p>Los archivos se organizarán automáticamente en: <br><strong>Dropbox/Archivos/[Año]/[Mes]/[Diario]</strong></p>
+                                        </div>
+                                    </div>
+                                </div>
                             </div>
                         </div>
 
