@@ -1,0 +1,62 @@
+{
+  "name": "archidrop-desktop",
+  "version": "1.0.0",
+  "description": "Desktop application for organizing digital diary archives",
+  "main": "dist/main.js",
+  "scripts": {
+    "build": "tsc && npm run copy-assets && npm run compile-css",
+    "build:watch": "tsc --watch",
+    "copy-assets": "copy src\\renderer\\index.html dist\\renderer\\index.html",
+    "compile-css": "tailwindcss -i ./src/styles/input.css -o ./dist/styles/output.css",
+    "start": "npm run build && electron dist/main.js",
+    "dev": "concurrently \"npm run build:watch\" \"wait-on dist/main.js && electron dist/main.js\"",
+    "pack": "electron-builder",
+    "dist": "npm run build && electron-builder",
+    "build-css": "tailwindcss -i ./src/styles/input.css -o ./dist/styles/output.css --watch"
+  },
+  "keywords": [
+    "electron",
+    "typescript",
+    "file-organizer",
+    "digital-diary",
+    "desktop-app"
+  ],
+  "author": "Roberto Caamaño",
+  "license": "MIT",
+  "devDependencies": {
+    "@types/node": "^20.0.0",
+    "electron": "^27.0.0",
+    "electron-builder": "^24.0.0",
+    "typescript": "^5.0.0",
+    "concurrently": "^8.0.0",
+    "wait-on": "^7.0.0",
+    "tailwindcss": "^3.0.0",
+    "autoprefixer": "^10.0.0",
+    "postcss": "^8.0.0"
+  },
+  "dependencies": {
+    "electron-store": "^8.0.0",
+    "node-7z": "^3.0.0",
+    "fs-extra": "^11.0.0"
+  },
+  "build": {
+    "appId": "com.archidrop.desktop",
+    "productName": "Archidrop Desktop",
+    "directories": {
+      "output": "release"
+    },
+    "files": [
+      "dist/**/*",
+      "node_modules/**/*"
+    ],
+    "mac": {
+      "category": "public.app-category.utilities"
+    },
+    "win": {
+      "target": "nsis"
+    },
+    "linux": {
+      "target": "AppImage"
+    }
+  }
+}
