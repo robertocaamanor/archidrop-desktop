@@ -8,8 +8,8 @@ contextBridge.exposeInMainWorld('electronAPI', {
   saveSettings: (settings: any) => ipcRenderer.invoke('save-settings', settings),
   previewFiles: (inputPath: string) =>
     ipcRenderer.invoke('preview-files', inputPath),
-  startProcessing: (inputPath: string) => 
-    ipcRenderer.invoke('start-processing', inputPath),
+  startProcessing: (inputPath: string, selectedFiles: string[], deleteOriginals: boolean) => 
+    ipcRenderer.invoke('start-processing', inputPath, selectedFiles, deleteOriginals),
   
   // Listen for processing progress updates
   onProcessingProgress: (callback: (progress: any) => void) => {

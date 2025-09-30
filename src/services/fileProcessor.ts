@@ -101,21 +101,14 @@ export async function previewFiles(
     const allFiles = await getAllFiles(inputPath);
     result.totalFiles = allFiles.length;
 
-    // Filter only supported archives and analyze each one
+    // Filter only supported archives that can be processed
     for (const file of allFiles) {
       const fileName = path.basename(file);
       const extension = path.extname(fileName).toLowerCase();
       const supportedExtensions = ['.zip', '.rar', '.7z'];
 
-      const item: PreviewItem = {
-        fileName,
-        willProcess: false
-      };
-
-      if (!supportedExtensions.includes(extension)) {
-        item.reason = `Extensión no soportada: ${extension}`;
-      } else {
-        // Try to parse the filename
+      // Only process files with supported extensions and valid nomenclature
+      if (supportedExtensions.includes(extension)) {
         const fileInfo = parseFileName(fileName);
         if (fileInfo) {
           const monthNames = [
@@ -133,16 +126,17 @@ export async function previewFiles(
             fileInfo.diary
           );
 
-          item.willProcess = true;
-          item.targetPath = targetPath;
-          item.parsedInfo = fileInfo;
+          const item: PreviewItem = {
+            fileName,
+            willProcess: true,
+            targetPath: targetPath,
+            parsedInfo: fileInfo
+          };
+
+          result.items.push(item);
           result.processableFiles++;
-        } else {
-          item.reason = 'No se pudo identificar fecha/diario en el nombre del archivo';
         }
       }
-
-      result.items.push(item);
     }
 
     result.success = true;
@@ -175,6 +169,8 @@ async function getAllFiles(dirPath: string): Promise<string[]> {
 
 export async function processFiles(
   inputPath: string, 
+  selectedFiles: string[],
+  deleteOriginals: boolean,
   onProgress: ProgressCallback
 ): Promise<ProcessingResult> {
   const result: ProcessingResult = {
@@ -199,10 +195,16 @@ export async function processFiles(
     const archivosPath = path.join(dropboxPath, 'Archivos');
 
     // Get all files in input directory
-    const files = await getFilesToProcess(inputPath);
+    const allFiles = await getFilesToProcess(inputPath);
+    
+    // Filter only selected files
+    const files = allFiles.filter(filePath => {
+      const fileName = path.basename(filePath);
+      return selectedFiles.includes(fileName);
+    });
     
     if (files.length === 0) {
-      throw new Error('No se encontraron archivos para procesar');
+      throw new Error('No se encontraron archivos seleccionados para procesar');
     }
 
     onProgress({
@@ -229,6 +231,17 @@ export async function processFiles(
       try {
         await processFile(file, archivosPath);
         result.processed++;
+        
+        // Delete original file if processing was successful and option is enabled
+        if (deleteOriginals) {
+          try {
+            await fs.remove(file);
+            console.log(`Deleted original file: ${fileName}`);
+          } catch (deleteError) {
+            console.error(`Error deleting original file ${fileName}:`, deleteError);
+            result.errors.push(`Advertencia: No se pudo eliminar el archivo original ${fileName}`);
+          }
+        }
       } catch (error) {
         console.error(`Error processing file ${fileName}:`, error);
         result.errors.push(`Error procesando ${fileName}: ${error instanceof Error ? error.message : 'Error desconocido'}`);

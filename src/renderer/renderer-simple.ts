@@ -20,12 +20,7 @@ class ArchidropApp {
 
     
     // Action buttons
-    this.getElement('preview-btn').addEventListener('click', () => this.previewFiles());
     this.getElement('process-btn').addEventListener('click', () => this.startProcessing());
-    
-    // Preview modal buttons
-    this.getElement('preview-cancel').addEventListener('click', () => this.hidePreview());
-    this.getElement('preview-confirm').addEventListener('click', () => this.startProcessingFromPreview());
     
     // Settings modal
     this.getElement('settings-btn').addEventListener('click', () => this.showSettings());
@@ -88,6 +83,9 @@ class ArchidropApp {
         this.inputPath = result.filePaths[0];
         (this.getElement('input-path') as HTMLInputElement).value = this.inputPath;
         this.updateProcessButton();
+        
+        // Automatically preview files after selecting folder
+        await this.previewFiles();
       }
     } catch (error) {
       console.error('Error selecting input folder:', error);
@@ -98,11 +96,13 @@ class ArchidropApp {
 
 
   private updateProcessButton(): void {
-    const previewBtn = this.getElement('preview-btn') as HTMLButtonElement;
     const processBtn = this.getElement('process-btn') as HTMLButtonElement;
     
-    const canProcess = !this.isProcessing && this.inputPath;
-    previewBtn.disabled = !canProcess;
+    // Check if any files are selected
+    const checkboxes = document.querySelectorAll('.file-checkbox') as NodeListOf<HTMLInputElement>;
+    const hasSelectedFiles = Array.from(checkboxes).some(cb => cb.checked);
+    
+    const canProcess = !this.isProcessing && this.inputPath && (checkboxes.length === 0 || hasSelectedFiles);
     processBtn.disabled = !canProcess;
   }
 
@@ -128,56 +128,107 @@ class ArchidropApp {
     const previewCard = this.getElement('preview-card');
     const previewContent = this.getElement('preview-content');
     const previewCount = this.getElement('preview-count');
-    const skipCount = this.getElement('skip-count');
+    const selectedCount = this.getElement('selected-count');
 
     previewCount.textContent = result.processableFiles.toString();
-    skipCount.textContent = (result.totalFiles - result.processableFiles).toString();
+    selectedCount.textContent = result.processableFiles.toString(); // All selected by default
 
     let html = '';
 
-    // Show processable files
-    const processableItems = result.items.filter((item: any) => item.willProcess);
-    if (processableItems.length > 0) {
-      html += '<div class="mb-4"><h4 class="font-medium text-green-600 mb-2">✅ Archivos que se procesarán:</h4>';
-      processableItems.forEach((item: any) => {
-        html += `<div class="mb-2 p-2 bg-green-50 rounded">
-          <div class="font-medium text-sm">${item.fileName}</div>
-          <div class="text-xs text-gray-600">→ ${item.parsedInfo.year}/${item.parsedInfo.month.toString().padStart(2, '0')} - ${getMonthName(item.parsedInfo.month)}/${item.parsedInfo.diary}</div>
+    // Only show processable files with checkboxes
+    if (result.items.length > 0) {
+      html += '<div class="space-y-3">';
+      result.items.forEach((item: any, index: number) => {
+        html += `<div class="p-3 bg-green-50 border border-green-200 rounded-lg">
+          <div class="flex items-start space-x-3">
+            <input type="checkbox" id="file-${index}" data-filename="${item.fileName}" 
+                   class="file-checkbox mt-1 rounded border-gray-300 text-blue-600 focus:ring-blue-500" checked>
+            <div class="flex-1">
+              <label for="file-${index}" class="font-medium text-green-800 cursor-pointer">${item.fileName}</label>
+              <div class="text-sm text-green-600 mt-1">
+                📁 ${item.parsedInfo.year}/${item.parsedInfo.month.toString().padStart(2, '0')} - ${getMonthName(item.parsedInfo.month)}/${item.parsedInfo.diary}
+              </div>
+            </div>
+          </div>
         </div>`;
       });
       html += '</div>';
-    }
-
-    // Show skipped files
-    const skippedItems = result.items.filter((item: any) => !item.willProcess);
-    if (skippedItems.length > 0) {
-      html += '<div><h4 class="font-medium text-orange-600 mb-2">⚠️ Archivos que se omitirán:</h4>';
-      skippedItems.forEach((item: any) => {
-        html += `<div class="mb-2 p-2 bg-orange-50 rounded">
-          <div class="font-medium text-sm">${item.fileName}</div>
-          <div class="text-xs text-gray-600">${item.reason}</div>
-        </div>`;
-      });
-      html += '</div>';
+    } else {
+      html = '<div class="text-center py-8 text-gray-500">No se encontraron archivos que cumplan con el patrón de nomenclatura requerido.</div>';
     }
 
     previewContent.innerHTML = html;
+    
+    // Setup event listeners for checkboxes
+    this.setupCheckboxListeners();
+    
     previewCard.classList.remove('hidden');
   }
 
-  private hidePreview(): void {
-    this.getElement('preview-card').classList.add('hidden');
-  }
-
-  private startProcessingFromPreview(): void {
-    this.hidePreview();
-    this.startProcessing();
+  private setupCheckboxListeners(): void {
+    // Setup individual checkbox listeners
+    const checkboxes = document.querySelectorAll('.file-checkbox') as NodeListOf<HTMLInputElement>;
+    const selectedCount = this.getElement('selected-count');
+    const selectAllBtn = this.getElement('select-all-btn');
+    
+    const updateCounts = () => {
+      const checkedCount = Array.from(checkboxes).filter(cb => cb.checked).length;
+      selectedCount.textContent = checkedCount.toString();
+      
+      // Update process button state
+      this.updateProcessButton();
+      
+      // Update select all button text
+      const allChecked = checkedCount === checkboxes.length;
+      const noneChecked = checkedCount === 0;
+      
+      if (allChecked) {
+        selectAllBtn.textContent = 'Deseleccionar todos';
+      } else if (noneChecked) {
+        selectAllBtn.textContent = 'Seleccionar todos';
+      } else {
+        selectAllBtn.textContent = 'Seleccionar todos';
+      }
+    };
+    
+    // Add listeners to each checkbox
+    checkboxes.forEach(checkbox => {
+      checkbox.addEventListener('change', updateCounts);
+    });
+    
+    // Setup select all button
+    selectAllBtn.addEventListener('click', () => {
+      const checkedCount = Array.from(checkboxes).filter(cb => cb.checked).length;
+      const shouldCheck = checkedCount !== checkboxes.length;
+      
+      checkboxes.forEach(checkbox => {
+        checkbox.checked = shouldCheck;
+      });
+      
+      updateCounts();
+    });
+    
+    // Initial count update
+    updateCounts();
   }
 
   private async startProcessing(): Promise<void> {
     if (this.isProcessing || !this.inputPath) {
       return;
     }
+
+    // Get selected files
+    const checkboxes = document.querySelectorAll('.file-checkbox:checked') as NodeListOf<HTMLInputElement>;
+    const selectedFiles = Array.from(checkboxes).map(cb => cb.dataset.filename).filter(Boolean);
+    
+    if (selectedFiles.length === 0) {
+      this.showError('Selecciona al menos un archivo para procesar');
+      return;
+    }
+
+    // Get delete originals option
+    const deleteOriginalsCheckbox = this.getElement('delete-originals') as HTMLInputElement;
+    const deleteOriginals = deleteOriginalsCheckbox?.checked || false;
 
     this.isProcessing = true;
     this.updateProcessButton();
@@ -188,7 +239,7 @@ class ArchidropApp {
     
     try {
       const electronAPI = (window as any).electronAPI;
-      const result = await electronAPI.startProcessing(this.inputPath);
+      const result = await electronAPI.startProcessing(this.inputPath, selectedFiles, deleteOriginals);
       
       if (result.success) {
         this.showResults(result);

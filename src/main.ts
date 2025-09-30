@@ -79,12 +79,12 @@ ipcMain.handle('preview-files', async (event, inputPath: string) => {
   }
 });
 
-ipcMain.handle('start-processing', async (event, inputPath: string) => {
+ipcMain.handle('start-processing', async (event, inputPath: string, selectedFiles: string[], deleteOriginals: boolean) => {
   try {
     // Import the processing logic
     const { processFiles } = await import('./services/fileProcessor');
     
-    return await processFiles(inputPath, (progress) => {
+    return await processFiles(inputPath, selectedFiles, deleteOriginals, (progress) => {
       event.sender.send('processing-progress', progress);
     });
   } catch (error) {
