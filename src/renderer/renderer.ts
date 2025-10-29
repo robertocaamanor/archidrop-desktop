@@ -15,14 +15,17 @@ class ArchidropApp {
     console.log('Initializing elements...');
     console.log('window.electronAPI available:', !!window.electronAPI);
     
-    // Input elements
-    this.getElement('select-input-btn').addEventListener('click', () => {
-      console.log('Select input button clicked');
-      this.selectInputFolder();
+    // Input elements - folder selection buttons
+    this.getElement('select-downloads-btn').addEventListener('click', () => {
+      this.selectDownloadsFolder();
     });
+    
     this.getElement('select-dropbox-btn').addEventListener('click', () => {
-      console.log('Select dropbox button clicked');
       this.selectDropboxFolder();
+    });
+    
+    this.getElement('select-custom-btn').addEventListener('click', () => {
+      this.selectInputFolder();
     });
     this.getElement('process-btn').addEventListener('click', () => this.startProcessing());
     
@@ -43,11 +46,6 @@ class ArchidropApp {
   private async loadSettings(): Promise<void> {
     try {
       const settings = await window.electronAPI.getSettings();
-      
-      if (settings.dropboxPath) {
-        this.dropboxPath = settings.dropboxPath;
-        (this.getElement('dropbox-path') as HTMLInputElement).value = settings.dropboxPath;
-      }
       
       if (settings.lastInputPath) {
         this.inputPath = settings.lastInputPath;
@@ -87,6 +85,9 @@ class ArchidropApp {
         (this.getElement('input-path') as HTMLInputElement).value = this.inputPath;
         this.updateProcessButton();
         console.log('Input path set to:', this.inputPath);
+        
+        // Automatically preview files after selecting folder
+        await this.previewFiles();
       }
     } catch (error) {
       console.error('Error selecting input folder:', error);
@@ -94,14 +95,45 @@ class ArchidropApp {
     }
   }
 
+  private async selectDownloadsFolder(): Promise<void> {
+    try {
+      if (!window.electronAPI) {
+        this.showError('API de Electron no disponible');
+        return;
+      }
+      
+      const result = await window.electronAPI.getDownloadsPath();
+      
+      if (result && result.path) {
+        this.inputPath = result.path;
+        (this.getElement('input-path') as HTMLInputElement).value = this.inputPath;
+        this.updateProcessButton();
+        
+        // Automatically preview files after selecting folder
+        await this.previewFiles();
+      }
+    } catch (error) {
+      console.error('Error selecting downloads folder:', error);
+      this.showError('Error al seleccionar la carpeta de descargas');
+    }
+  }
+
   private async selectDropboxFolder(): Promise<void> {
     try {
-      const result = await window.electronAPI.selectDropboxFolder();
+      if (!window.electronAPI) {
+        this.showError('API de Electron no disponible');
+        return;
+      }
       
-      if (!result.canceled && result.filePaths.length > 0) {
-        this.dropboxPath = result.filePaths[0];
-        (this.getElement('dropbox-path') as HTMLInputElement).value = this.dropboxPath;
+      const result = await window.electronAPI.getDropboxPath();
+      
+      if (result && result.path) {
+        this.inputPath = result.path;
+        (this.getElement('input-path') as HTMLInputElement).value = this.inputPath;
         this.updateProcessButton();
+        
+        // Automatically preview files after selecting folder
+        await this.previewFiles();
       }
     } catch (error) {
       console.error('Error selecting Dropbox folder:', error);
@@ -111,13 +143,28 @@ class ArchidropApp {
 
   private updateProcessButton(): void {
     const processBtn = this.getElement('process-btn') as HTMLButtonElement;
-    processBtn.disabled = !this.inputPath || !this.dropboxPath || this.isProcessing;
+    processBtn.disabled = !this.inputPath || this.isProcessing;
   }
 
   private async startProcessing(): Promise<void> {
-    if (this.isProcessing || !this.inputPath || !this.dropboxPath) {
+    if (this.isProcessing || !this.inputPath) {
       return;
     }
+
+    // Get selected files
+    const checkboxes = document.querySelectorAll('.file-checkbox:checked') as NodeListOf<HTMLInputElement>;
+    const selectedFiles = Array.from(checkboxes)
+      .map(cb => cb.dataset.filename)
+      .filter((filename): filename is string => !!filename);
+    
+    if (selectedFiles.length === 0) {
+      this.showError('Selecciona al menos un archivo para procesar');
+      return;
+    }
+
+    // Get delete originals option
+    const deleteOriginalsCheckbox = this.getElement('delete-originals') as HTMLInputElement;
+    const deleteOriginals = deleteOriginalsCheckbox?.checked || false;
 
     this.isProcessing = true;
     this.updateProcessButton();
@@ -127,7 +174,7 @@ class ArchidropApp {
     this.getElement('results-card').classList.add('hidden');
     
     try {
-      const result = await window.electronAPI.startProcessing(this.inputPath, this.dropboxPath);
+      const result = await window.electronAPI.startProcessing(this.inputPath, selectedFiles, deleteOriginals);
       
       if (result.success) {
         this.showResults(result);
@@ -222,7 +269,6 @@ class ArchidropApp {
       const autoOpen = (this.getElement('auto-open-setting') as HTMLInputElement).checked;
       
       const settings = {
-        dropboxPath: this.dropboxPath,
         lastInputPath: this.inputPath,
         autoOpen: autoOpen
       };
@@ -232,6 +278,25 @@ class ArchidropApp {
     } catch (error) {
       console.error('Error saving settings:', error);
       this.showError('Error al guardar la configuración');
+    }
+  }
+
+  private async previewFiles(): Promise<void> {
+    if (!this.inputPath) return;
+
+    try {
+      const result = await window.electronAPI.previewFiles(this.inputPath);
+
+      if (result.success) {
+        // Preview functionality can be implemented here if needed
+        // For now, we'll just log it since renderer-simple.ts handles the full UI
+        console.log('Preview results:', result);
+      } else {
+        this.showError(result.error || 'Error al previsualizar archivos');
+      }
+    } catch (error) {
+      console.error('Error previewing files:', error);
+      this.showError('Error inesperado al previsualizar archivos');
     }
   }
 }

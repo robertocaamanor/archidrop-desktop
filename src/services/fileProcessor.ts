@@ -471,8 +471,8 @@ function parseFileName(fileName: string): FileInfo | null {
   
   // Specific patterns for "La Tercera" and "TV Grama" nomenclature
   const patterns = [
-    // Pattern: "La Tercera - 11 de diciembre de 1989"
-    /^(.+?)\s*-\s*(\d{1,2})\s+de\s+(\w+)\s+de\s+(\d{4})$/i,
+    // Pattern: "La Tercera - 11 de diciembre de 1989" or "La Tercera - 11 de diciembre del 1989"
+    /^(.+?)\s*-\s*(\d{1,2})\s+de\s+(\w+)\s+(?:de|del)\s+(\d{4})$/i,
     
     // Pattern: "TV Grama - Diciembre 1989"
     /^(.+?)\s*-\s*(\w+)\s+(\d{4})$/i,

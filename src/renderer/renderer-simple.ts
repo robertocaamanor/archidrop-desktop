@@ -13,11 +13,18 @@ class ArchidropApp {
   }
 
   private initializeElements(): void {
-    // Input elements
-    this.getElement('select-input-btn').addEventListener('click', () => {
+    // Input elements - folder selection buttons
+    this.getElement('select-downloads-btn').addEventListener('click', () => {
+      this.selectDownloadsFolder();
+    });
+    
+    this.getElement('select-dropbox-btn').addEventListener('click', () => {
+      this.selectDropboxFolder();
+    });
+    
+    this.getElement('select-custom-btn').addEventListener('click', () => {
       this.selectInputFolder();
     });
-
     
     // Action buttons
     this.getElement('process-btn').addEventListener('click', () => this.startProcessing());
@@ -90,6 +97,54 @@ class ArchidropApp {
     } catch (error) {
       console.error('Error selecting input folder:', error);
       this.showError('Error al seleccionar la carpeta de entrada');
+    }
+  }
+
+  private async selectDownloadsFolder(): Promise<void> {
+    try {
+      const electronAPI = (window as any).electronAPI;
+      if (!electronAPI) {
+        this.showError('API de Electron no disponible');
+        return;
+      }
+      
+      const result = await electronAPI.getDownloadsPath();
+      
+      if (result && result.path) {
+        this.inputPath = result.path;
+        (this.getElement('input-path') as HTMLInputElement).value = this.inputPath;
+        this.updateProcessButton();
+        
+        // Automatically preview files after selecting folder
+        await this.previewFiles();
+      }
+    } catch (error) {
+      console.error('Error selecting downloads folder:', error);
+      this.showError('Error al seleccionar la carpeta de descargas');
+    }
+  }
+
+  private async selectDropboxFolder(): Promise<void> {
+    try {
+      const electronAPI = (window as any).electronAPI;
+      if (!electronAPI) {
+        this.showError('API de Electron no disponible');
+        return;
+      }
+      
+      const result = await electronAPI.getDropboxPath();
+      
+      if (result && result.path) {
+        this.inputPath = result.path;
+        (this.getElement('input-path') as HTMLInputElement).value = this.inputPath;
+        this.updateProcessButton();
+        
+        // Automatically preview files after selecting folder
+        await this.previewFiles();
+      }
+    } catch (error) {
+      console.error('Error selecting Dropbox folder:', error);
+      this.showError('Error al seleccionar la carpeta de Dropbox');
     }
   }
 

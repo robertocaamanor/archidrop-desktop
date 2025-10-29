@@ -4,6 +4,8 @@ import { contextBridge, ipcRenderer } from 'electron';
 // the ipcRenderer without exposing the entire object
 contextBridge.exposeInMainWorld('electronAPI', {
   selectFolder: () => ipcRenderer.invoke('select-folder'),
+  getDownloadsPath: () => ipcRenderer.invoke('get-downloads-path'),
+  getDropboxPath: () => ipcRenderer.invoke('get-dropbox-path'),
   getSettings: () => ipcRenderer.invoke('get-settings'),
   saveSettings: (settings: any) => ipcRenderer.invoke('save-settings', settings),
   previewFiles: (inputPath: string) =>

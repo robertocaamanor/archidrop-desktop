@@ -1,6 +1,7 @@
 import { app, BrowserWindow, ipcMain, dialog } from 'electron';
 import * as path from 'path';
 import * as fs from 'fs-extra';
+import * as os from 'os';
 import Store from 'electron-store';
 
 const store = new Store();
@@ -45,6 +46,17 @@ app.on('activate', () => {
   }
 });
 
+// Helper function to get Dropbox path
+function getDropboxPath(): string {
+  const userProfile = os.homedir();
+  return path.join(userProfile, 'Dropbox');
+}
+
+// Helper function to get Downloads path
+function getDownloadsPath(): string {
+  return app.getPath('downloads');
+}
+
 // IPC handlers for file operations
 ipcMain.handle('select-folder', async () => {
   const result = await dialog.showOpenDialog({
@@ -55,6 +67,13 @@ ipcMain.handle('select-folder', async () => {
   return result;
 });
 
+ipcMain.handle('get-downloads-path', () => {
+  return { path: getDownloadsPath() };
+});
+
+ipcMain.handle('get-dropbox-path', () => {
+  return { path: getDropboxPath() };
+});
 
 ipcMain.handle('get-settings', () => {
   return store.get('settings', {
