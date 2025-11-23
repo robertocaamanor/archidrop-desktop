@@ -14,8 +14,8 @@ export interface ElectronAPI {
   getDropboxPath: () => Promise<{ path: string }>;
   getSettings: () => Promise<any>;
   saveSettings: (settings: any) => Promise<boolean>;
-  previewFiles: (inputPath: string) => Promise<any>;
-  startProcessing: (inputPath: string, selectedFiles: string[], deleteOriginals: boolean) => Promise<any>;
+  previewFiles: (inputPath: string, useDateFolder?: boolean) => Promise<any>;
+  startProcessing: (inputPath: string, selectedFiles: string[], deleteOriginals: boolean, useDateFolder?: boolean) => Promise<any>;
   onProcessingProgress: (callback: (progress: ProcessingProgress) => void) => void;
   removeAllListeners: (channel: string) => void;
 }

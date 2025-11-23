@@ -8,10 +8,10 @@ contextBridge.exposeInMainWorld('electronAPI', {
   getDropboxPath: () => ipcRenderer.invoke('get-dropbox-path'),
   getSettings: () => ipcRenderer.invoke('get-settings'),
   saveSettings: (settings: any) => ipcRenderer.invoke('save-settings', settings),
-  previewFiles: (inputPath: string) =>
-    ipcRenderer.invoke('preview-files', inputPath),
-  startProcessing: (inputPath: string, selectedFiles: string[], deleteOriginals: boolean) => 
-    ipcRenderer.invoke('start-processing', inputPath, selectedFiles, deleteOriginals),
+  previewFiles: (inputPath: string, useDateFolder: boolean = false) =>
+    ipcRenderer.invoke('preview-files', inputPath, useDateFolder),
+  startProcessing: (inputPath: string, selectedFiles: string[], deleteOriginals: boolean, useDateFolder: boolean = false) => 
+    ipcRenderer.invoke('start-processing', inputPath, selectedFiles, deleteOriginals, useDateFolder),
   
   // Listen for processing progress updates
   onProcessingProgress: (callback: (progress: any) => void) => {

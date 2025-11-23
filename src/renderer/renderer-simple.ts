@@ -5,6 +5,7 @@ class ArchidropApp {
   private inputPath: string = '';
   private dropboxPath: string = '';
   private isProcessing: boolean = false;
+  private useDateFolder: boolean = false;
 
   constructor() {
     this.initializeElements();
@@ -59,6 +60,8 @@ class ArchidropApp {
       }
       
       (this.getElement('auto-open-setting') as HTMLInputElement).checked = settings.autoOpen || false;
+      this.useDateFolder = settings.useDateFolder || false;
+      (this.getElement('use-date-folder-setting') as HTMLInputElement).checked = this.useDateFolder;
       
       this.updateProcessButton();
     } catch (error) {
@@ -166,7 +169,7 @@ class ArchidropApp {
 
     try {
       const electronAPI = (window as any).electronAPI;
-      const result = await electronAPI.previewFiles(this.inputPath);
+      const result = await electronAPI.previewFiles(this.inputPath, this.useDateFolder);
 
       if (result.success) {
         this.showPreviewResults(result);
@@ -201,7 +204,7 @@ class ArchidropApp {
             <div class="flex-1">
               <label for="file-${index}" class="font-medium text-green-800 cursor-pointer">${item.fileName}</label>
               <div class="text-sm text-green-600 mt-1">
-                📁 ${item.parsedInfo.year}/${item.parsedInfo.month.toString().padStart(2, '0')} - ${getMonthName(item.parsedInfo.month)}/${item.parsedInfo.diary}
+                📁 ${item.targetPathLabel || ''}
               </div>
             </div>
           </div>
@@ -294,7 +297,7 @@ class ArchidropApp {
     
     try {
       const electronAPI = (window as any).electronAPI;
-      const result = await electronAPI.startProcessing(this.inputPath, selectedFiles, deleteOriginals);
+      const result = await electronAPI.startProcessing(this.inputPath, selectedFiles, deleteOriginals, this.useDateFolder);
       
       if (result.success) {
         this.showResults(result);
@@ -387,29 +390,24 @@ class ArchidropApp {
   private async saveSettings(): Promise<void> {
     try {
       const autoOpen = (this.getElement('auto-open-setting') as HTMLInputElement).checked;
+      const useDateFolder = (this.getElement('use-date-folder-setting') as HTMLInputElement).checked;
+      this.useDateFolder = useDateFolder;
       
       const settings = {
         lastInputPath: this.inputPath,
-        autoOpen: autoOpen
+        autoOpen: autoOpen,
+        useDateFolder: useDateFolder
       };
       
       const electronAPI = (window as any).electronAPI;
       await electronAPI.saveSettings(settings);
       this.hideSettings();
+      await this.previewFiles();
     } catch (error) {
       console.error('Error saving settings:', error);
       this.showError('Error al guardar la configuración');
     }
   }
-}
-
-// Helper function for month names
-function getMonthName(month: number): string {
-  const monthNames = [
-    '', 'Enero', 'Febrero', 'Marzo', 'Abril', 'Mayo', 'Junio',
-    'Julio', 'Agosto', 'Septiembre', 'Octubre', 'Noviembre', 'Diciembre'
-  ];
-  return monthNames[month] || 'Desconocido';
 }
 
 // Initialize the app when the DOM is loaded

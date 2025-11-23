@@ -4,6 +4,7 @@ class ArchidropApp {
   private inputPath: string = '';
   private dropboxPath: string = '';
   private isProcessing: boolean = false;
+  private useDateFolder: boolean = false;
 
   constructor() {
     this.initializeElements();
@@ -53,6 +54,8 @@ class ArchidropApp {
       }
       
       (this.getElement('auto-open-setting') as HTMLInputElement).checked = settings.autoOpen || false;
+      this.useDateFolder = settings.useDateFolder || false;
+      (this.getElement('use-date-folder-setting') as HTMLInputElement).checked = this.useDateFolder;
       
       this.updateProcessButton();
     } catch (error) {
@@ -174,7 +177,7 @@ class ArchidropApp {
     this.getElement('results-card').classList.add('hidden');
     
     try {
-      const result = await window.electronAPI.startProcessing(this.inputPath, selectedFiles, deleteOriginals);
+      const result = await window.electronAPI.startProcessing(this.inputPath, selectedFiles, deleteOriginals, this.useDateFolder);
       
       if (result.success) {
         this.showResults(result);
@@ -267,14 +270,18 @@ class ArchidropApp {
   private async saveSettings(): Promise<void> {
     try {
       const autoOpen = (this.getElement('auto-open-setting') as HTMLInputElement).checked;
+      const useDateFolder = (this.getElement('use-date-folder-setting') as HTMLInputElement).checked;
+      this.useDateFolder = useDateFolder;
       
       const settings = {
         lastInputPath: this.inputPath,
-        autoOpen: autoOpen
+        autoOpen: autoOpen,
+        useDateFolder: useDateFolder
       };
       
       await window.electronAPI.saveSettings(settings);
       this.hideSettings();
+      await this.previewFiles();
     } catch (error) {
       console.error('Error saving settings:', error);
       this.showError('Error al guardar la configuración');
@@ -285,7 +292,7 @@ class ArchidropApp {
     if (!this.inputPath) return;
 
     try {
-      const result = await window.electronAPI.previewFiles(this.inputPath);
+      const result = await window.electronAPI.previewFiles(this.inputPath, this.useDateFolder);
 
       if (result.success) {
         // Preview functionality can be implemented here if needed

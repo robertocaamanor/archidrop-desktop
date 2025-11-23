@@ -3,6 +3,16 @@ import * as path from 'path';
 import { spawn } from 'child_process';
 import * as os from 'os';
 
+const MONTH_NAMES = [
+  '', 'Enero', 'Febrero', 'Marzo', 'Abril', 'Mayo', 'Junio',
+  'Julio', 'Agosto', 'Septiembre', 'Octubre', 'Noviembre', 'Diciembre'
+];
+
+const MONTH_NAMES_LOWER = [
+  '', 'enero', 'febrero', 'marzo', 'abril', 'mayo', 'junio',
+  'julio', 'agosto', 'septiembre', 'octubre', 'noviembre', 'diciembre'
+];
+
 // Helper function to get Dropbox path
 function getDropboxPath(): string {
   const userProfile = os.homedir();
@@ -60,8 +70,10 @@ export interface PreviewItem {
   fileName: string;
   willProcess: boolean;
   targetPath?: string;
+  targetPathLabel?: string;
   reason?: string;
   parsedInfo?: FileInfo;
+  dateFolderName?: string;
 }
 
 export interface PreviewResult {
@@ -73,7 +85,8 @@ export interface PreviewResult {
 }
 
 export async function previewFiles(
-  inputPath: string
+  inputPath: string,
+  useDateFolder: boolean
 ): Promise<PreviewResult> {
   const result: PreviewResult = {
     success: false,
@@ -111,26 +124,15 @@ export async function previewFiles(
       if (supportedExtensions.includes(extension)) {
         const fileInfo = parseFileName(fileName);
         if (fileInfo) {
-          const monthNames = [
-            '', 'Enero', 'Febrero', 'Marzo', 'Abril', 'Mayo', 'Junio',
-            'Julio', 'Agosto', 'Septiembre', 'Octubre', 'Noviembre', 'Diciembre'
-          ];
-          
-          const monthName = monthNames[fileInfo.month];
-          const monthFolder = `${fileInfo.month.toString().padStart(2, '0')} - ${monthName}`;
-          
-          const targetPath = path.join(
-            archivosPath,
-            fileInfo.year.toString(),
-            monthFolder,
-            fileInfo.diary
-          );
+          const targetInfo = buildTargetInfo(archivosPath, fileInfo, useDateFolder);
 
           const item: PreviewItem = {
             fileName,
             willProcess: true,
-            targetPath: targetPath,
-            parsedInfo: fileInfo
+            targetPath: targetInfo.fullPath,
+            targetPathLabel: targetInfo.label,
+            parsedInfo: fileInfo,
+            dateFolderName: targetInfo.dateFolderName
           };
 
           result.items.push(item);
@@ -171,6 +173,7 @@ export async function processFiles(
   inputPath: string, 
   selectedFiles: string[],
   deleteOriginals: boolean,
+  useDateFolder: boolean,
   onProgress: ProgressCallback
 ): Promise<ProcessingResult> {
   const result: ProcessingResult = {
@@ -229,7 +232,7 @@ export async function processFiles(
       });
 
       try {
-        await processFile(file, archivosPath);
+        await processFile(file, archivosPath, useDateFolder);
         result.processed++;
         
         // Delete original file if processing was successful and option is enabled
@@ -297,7 +300,7 @@ async function getFilesToProcess(inputPath: string): Promise<string[]> {
   return files;
 }
 
-async function processFile(filePath: string, archivosPath: string): Promise<void> {
+async function processFile(filePath: string, archivosPath: string, useDateFolder: boolean): Promise<void> {
   const fileName = path.basename(filePath, path.extname(filePath));
   const tempDir = path.join(archivosPath, 'temp', fileName);
   
@@ -327,7 +330,7 @@ async function processFile(filePath: string, archivosPath: string): Promise<void
     console.log(`Extracted ${extractedFiles.length} items from ${path.basename(filePath)}`);
     
     // Process extracted contents using the parsed info from original filename
-    await organizeExtractedFiles(tempDir, archivosPath, fileInfo);
+    await organizeExtractedFiles(tempDir, archivosPath, fileInfo, useDateFolder);
     
     // Add delay to ensure all file operations are complete
     await new Promise(resolve => setTimeout(resolve, 500));
@@ -415,25 +418,12 @@ async function extractWithPowerShell(filePath: string, outputDir: string): Promi
   });
 }
 
-async function organizeExtractedFiles(tempDir: string, archivosPath: string, fileInfo: FileInfo): Promise<void> {
+async function organizeExtractedFiles(tempDir: string, archivosPath: string, fileInfo: FileInfo, useDateFolder: boolean): Promise<void> {
   const files = await fs.readdir(tempDir);
   
   // Create month name in Spanish
-  const monthNames = [
-    '', 'Enero', 'Febrero', 'Marzo', 'Abril', 'Mayo', 'Junio',
-    'Julio', 'Agosto', 'Septiembre', 'Octubre', 'Noviembre', 'Diciembre'
-  ];
-  
-  const monthName = monthNames[fileInfo.month];
-  const monthFolder = `${fileInfo.month.toString().padStart(2, '0')} - ${monthName}`;
-  
-  // Create directory structure: YYYY > MM - MonthName > DiaryName  
-  const targetDir = path.join(
-    archivosPath,
-    fileInfo.year.toString(),
-    monthFolder,
-    fileInfo.diary
-  );
+  const targetInfo = buildTargetInfo(archivosPath, fileInfo, useDateFolder);
+  const targetDir = targetInfo.fullPath;
   
   console.log(`Creating directory structure: ${targetDir}`);
   await fs.ensureDir(targetDir);
@@ -461,6 +451,7 @@ interface FileInfo {
   year: number;
   month: number;
   diary: string;
+  day?: number;
 }
 
 function parseFileName(fileName: string): FileInfo | null {
@@ -500,65 +491,148 @@ function parseFileName(fileName: string): FileInfo | null {
     const pattern = patterns[i];
     const match = nameWithoutExt.match(pattern);
     
-    if (match) {
-      let year: number = 0;
-      let month: number = 0;
-      let diary: string = '';
-      
-      if (i === 0) {
-        // Pattern: "La Tercera - 11 de diciembre de 1989"
-        diary = match[1].trim();
-        const day = parseInt(match[2], 10);
-        const monthName = match[3].toLowerCase();
-        year = parseInt(match[4], 10);
-        month = spanishMonths[monthName] || 0;
-        
-        console.log(`Parsed pattern 1: diary="${diary}", day=${day}, month="${monthName}"(${month}), year=${year}`);
-        
-      } else if (i === 1 || i === 2) {
-        // Pattern: "TV Grama - Diciembre 1989"
-        diary = match[1].trim();
-        const monthName = match[2].toLowerCase();
-        year = parseInt(match[3], 10);
-        month = spanishMonths[monthName] || 0;
-        
-        console.log(`Parsed pattern 2/3: diary="${diary}", month="${monthName}"(${month}), year=${year}`);
-        
-      } else if (i === 3 || i === 4) {
-        // Fallback patterns: YYYY-MM-DD formats
-        year = parseInt(match[1], 10);
-        month = parseInt(match[2], 10);
-        diary = match[4] || match[3] || '';
-        
-        console.log(`Parsed fallback pattern: diary="${diary}", month=${month}, year=${year}`);
-        
-      } else if (i === 5) {
-        // Pattern: DiaryName_YYYY-MM-DD
-        diary = match[1] || '';
-        year = parseInt(match[2], 10);
-        month = parseInt(match[3], 10);
-        
-        console.log(`Parsed pattern 6: diary="${diary}", month=${month}, year=${year}`);
-      }
-      
-      // Validate date and diary name
-      if (year >= 1900 && year <= new Date().getFullYear() && 
-          month >= 1 && month <= 12 && diary && diary.trim().length > 0) {
-        
-        const result = { 
-          year, 
-          month, 
-          diary: diary.trim()
-        };
-        
-        console.log(`Successfully parsed: ${JSON.stringify(result)}`);
-        return result;
-      } else {
-        console.log(`Validation failed: year=${year}, month=${month}, diary="${diary}"`);
-      }
+    if (!match) {
+      continue;
     }
+
+    let year = 0;
+    let month = 0;
+    let diary = '';
+    let day: number | null = null;
+    
+    if (i === 0) {
+      // Pattern: "La Tercera - 11 de diciembre de 1989"
+      diary = match[1].trim();
+      day = parseInt(match[2], 10);
+      const monthName = match[3].toLowerCase();
+      year = parseInt(match[4], 10);
+      month = spanishMonths[monthName] || 0;
+      
+      console.log(`Parsed pattern 1: diary="${diary}", day=${day}, month="${monthName}"(${month}), year=${year}`);
+    } else if (i === 1 || i === 2) {
+      // Pattern: "TV Grama - Diciembre 1989"
+      diary = match[1].trim();
+      const monthName = match[2].toLowerCase();
+      year = parseInt(match[3], 10);
+      month = spanishMonths[monthName] || 0;
+      
+      console.log(`Parsed pattern 2/3: diary="${diary}", month="${monthName}"(${month}), year=${year}`);
+    } else if (i === 3) {
+      // Pattern: YYYY-MM-DD_DiaryName
+      year = parseInt(match[1], 10);
+      month = parseInt(match[2], 10);
+      day = parseInt(match[3], 10);
+      diary = (match[4] || '').trim();
+      
+      console.log(`Parsed fallback pattern 4: diary="${diary}", day=${day}, month=${month}, year=${year}`);
+    } else if (i === 4) {
+      // Pattern: YYYYMMDD_DiaryName
+      year = parseInt(match[1], 10);
+      month = parseInt(match[2], 10);
+      day = parseInt(match[3], 10);
+      diary = (match[4] || '').trim();
+      
+      console.log(`Parsed fallback pattern 5: diary="${diary}", day=${day}, month=${month}, year=${year}`);
+    } else if (i === 5) {
+      // Pattern: DiaryName_YYYY-MM-DD
+      diary = (match[1] || '').trim();
+      year = parseInt(match[2], 10);
+      month = parseInt(match[3], 10);
+      day = parseInt(match[4], 10);
+      
+      console.log(`Parsed pattern 6: diary="${diary}", day=${day}, month=${month}, year=${year}`);
+    }
+
+    const validYear = year >= 1900 && year <= new Date().getFullYear();
+    const validMonth = month >= 1 && month <= 12;
+    const validDiary = diary && diary.trim().length > 0;
+    const validDay = day === null || (day >= 1 && day <= 31);
+
+    if (validYear && validMonth && validDiary && validDay) {
+      const result: FileInfo = {
+        year,
+        month,
+        diary: diary.trim()
+      };
+
+      if (day !== null && validDay) {
+        result.day = day;
+      }
+
+      console.log(`Successfully parsed: ${JSON.stringify(result)}`);
+      return result;
+    }
+
+    console.log(`Validation failed: year=${year}, month=${month}, day=${day}, diary="${diary}"`);
   }
 
   console.log(`Could not parse filename: ${fileName}`);
   return null;
+}
+
+interface TargetInfo {
+  fullPath: string;
+  label: string;
+  dateFolderName?: string;
+}
+
+function buildTargetInfo(archivosPath: string, fileInfo: FileInfo, useDateFolder: boolean): TargetInfo {
+  const monthFolder = getMonthFolderName(fileInfo.month);
+  const baseTarget = path.join(
+    archivosPath,
+    fileInfo.year.toString(),
+    monthFolder,
+    fileInfo.diary
+  );
+
+  let fullPath = baseTarget;
+  let dateFolderName: string | undefined;
+
+  if (useDateFolder) {
+    const candidate = getDateFolderName(fileInfo);
+    if (candidate) {
+      dateFolderName = candidate;
+      fullPath = path.join(baseTarget, candidate);
+    }
+  }
+
+  const labelParts = [fileInfo.year.toString(), monthFolder, fileInfo.diary];
+  if (dateFolderName) {
+    labelParts.push(dateFolderName);
+  }
+
+  return {
+    fullPath,
+    label: labelParts.join(' / '),
+    dateFolderName
+  };
+}
+
+function getMonthFolderName(month: number): string {
+  if (month >= 1 && month <= 12) {
+    return `${month.toString().padStart(2, '0')} - ${MONTH_NAMES[month]}`;
+  }
+  const safeMonth = Math.max(0, Math.min(month, 99));
+  return `${safeMonth.toString().padStart(2, '0')} - Mes`;
+}
+
+function getDateFolderName(fileInfo: FileInfo): string | undefined {
+  const month = fileInfo.month;
+  const year = fileInfo.year;
+
+  if (!(month >= 1 && month <= 12) || year <= 0) {
+    return undefined;
+  }
+
+  const monthNameLower = MONTH_NAMES_LOWER[month];
+  if (!monthNameLower) {
+    return undefined;
+  }
+
+  if (fileInfo.day && fileInfo.day >= 1 && fileInfo.day <= 31) {
+    return `${fileInfo.day} de ${monthNameLower} de ${year}`;
+  }
+
+  const monthNameCapitalized = monthNameLower.charAt(0).toUpperCase() + monthNameLower.slice(1);
+  return `${monthNameCapitalized} de ${year}`;
 }

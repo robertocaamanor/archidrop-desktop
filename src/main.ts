@@ -79,7 +79,8 @@ ipcMain.handle('get-settings', () => {
   return store.get('settings', {
     dropboxPath: '',
     lastInputPath: '',
-    autoOpen: false
+    autoOpen: false,
+    useDateFolder: false
   });
 });
 
@@ -88,22 +89,22 @@ ipcMain.handle('save-settings', (event, settings) => {
   return true;
 });
 
-ipcMain.handle('preview-files', async (event, inputPath: string) => {
+ipcMain.handle('preview-files', async (event, inputPath: string, useDateFolder: boolean = false) => {
   try {
     const { previewFiles } = await import('./services/fileProcessor');
-    return await previewFiles(inputPath);
+    return await previewFiles(inputPath, useDateFolder);
   } catch (error) {
     console.error('Error previewing files:', error);
     return { success: false, error: error instanceof Error ? error.message : 'Error desconocido' };
   }
 });
 
-ipcMain.handle('start-processing', async (event, inputPath: string, selectedFiles: string[], deleteOriginals: boolean) => {
+ipcMain.handle('start-processing', async (event, inputPath: string, selectedFiles: string[], deleteOriginals: boolean, useDateFolder: boolean = false) => {
   try {
     // Import the processing logic
     const { processFiles } = await import('./services/fileProcessor');
     
-    return await processFiles(inputPath, selectedFiles, deleteOriginals, (progress) => {
+    return await processFiles(inputPath, selectedFiles, deleteOriginals, useDateFolder, (progress) => {
       event.sender.send('processing-progress', progress);
     });
   } catch (error) {
