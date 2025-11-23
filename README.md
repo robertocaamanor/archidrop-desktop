@@ -8,6 +8,8 @@ Una aplicación de escritorio moderna para organizar automáticamente archivos d
 - 📁 **Organización automática** - Organiza archivos por año/mes/diario
 - 📦 **Soporte multi-formato** - Compatible con archivos ZIP, RAR y 7Z
 - 🔄 **Progreso en tiempo real** - Barra de progreso y estado de procesamiento
+- 🧭 **Flujo por pestañas** - Separación clara entre la extracción de archivos comprimidos y la organización por fechas
+- 📆 **Organización por fecha flexible** - Detecta fechas en el nombre y permite copiar o mover archivos a carpetas con la estructura "1 de enero de 1988"
 - ⚙️ **Configuración persistente** - Guarda tus preferencias automáticamente
 - 🎨 **Interfaz moderna** - Diseño limpio con TailwindCSS
 
@@ -63,10 +65,15 @@ Esto iniciará TypeScript en modo watch y ejecutará Electron automáticamente.
 
 ## Uso
 
-1. **Seleccionar carpeta de archivos**: Elige la carpeta que contiene los archivos comprimidos a procesar
-2. **Seleccionar carpeta de Dropbox**: Elige la carpeta de destino donde se organizarán los archivos
-3. **Iniciar procesamiento**: Haz clic en el botón para comenzar el procesamiento automático
-4. **Monitorear progreso**: Observa el progreso en tiempo real con detalles del archivo actual
+1. **Pestaña Extracción de ZIPs**
+   - Selecciona la carpeta con los archivos comprimidos (ZIP, RAR, 7Z)
+   - Revisa la previsualización y filtra qué archivos procesar
+   - Inicia el procesamiento y observa el progreso en tiempo real
+2. **Pestaña Organizar por fecha**
+   - Selecciona la carpeta a ordenar (se usa el botón "Examinar" para elegirla)
+   - La app detectará nombres con fechas del tipo "1 de enero de 1988"
+   - Usa el switch para decidir si quieres **mover** o **copiar** los archivos a sus carpetas con nombre de fecha
+   - Inicia el proceso y revisa el resumen de resultados
 
 ## Estructura del Proyecto
 
@@ -77,7 +84,7 @@ archidrop-desktop/
 │   ├── preload.ts           # Script preload para seguridad
 │   ├── renderer/
 │   │   ├── index.html       # Interfaz principal
-│   │   └── renderer.ts      # Lógica del renderer
+│   │   └── renderer-simple.ts # Lógica del renderer
 │   ├── services/
 │   │   └── fileProcessor.ts # Lógica de procesamiento de archivos
 │   └── styles/
