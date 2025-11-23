@@ -1,4 +1,4 @@
-import { app, BrowserWindow, ipcMain, dialog } from 'electron';
+import { app, BrowserWindow, ipcMain, dialog, shell } from 'electron';
 import * as path from 'path';
 import * as fs from 'fs-extra';
 import * as os from 'os';
@@ -131,6 +131,25 @@ ipcMain.handle('start-date-processing', async (event, inputPath: string, selecte
     });
   } catch (error) {
     console.error('Error organizing files by date:', error);
+    return { success: false, error: error instanceof Error ? error.message : 'Error desconocido' };
+  }
+});
+
+ipcMain.handle('open-path', async (_event, targetPath: string) => {
+  try {
+    if (!targetPath) {
+      return { success: false, error: 'Ruta de destino no válida' };
+    }
+
+    const result = await shell.openPath(targetPath);
+    if (result) {
+      console.warn(`shell.openPath returned message: ${result}`);
+      return { success: false, error: result };
+    }
+
+    return { success: true };
+  } catch (error) {
+    console.error('Error opening destination path:', error);
     return { success: false, error: error instanceof Error ? error.message : 'Error desconocido' };
   }
 });

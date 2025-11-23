@@ -9,6 +9,7 @@ class ArchidropApp {
   private dateInputPath = '';
   private dateIsProcessing = false;
   private dateOperation: 'move' | 'copy' = 'move';
+  private autoOpen = false;
 
   constructor() {
     this.electronAPI = (window as any).electronAPI;
@@ -118,7 +119,8 @@ class ArchidropApp {
         (this.getElement('date-input-path') as HTMLInputElement).value = settings.lastInputPath;
       }
 
-      (this.getElement('auto-open-setting') as HTMLInputElement).checked = settings.autoOpen || false;
+      this.autoOpen = settings.autoOpen || false;
+      (this.getElement('auto-open-setting') as HTMLInputElement).checked = this.autoOpen;
       this.zipUseDateFolder = settings.useDateFolder || false;
       (this.getElement('use-date-folder-setting') as HTMLInputElement).checked = this.zipUseDateFolder;
 
@@ -315,6 +317,7 @@ class ArchidropApp {
 
       if (result.success) {
         this.showZipResults(result);
+        await this.handleAutoOpenDestinations(result.destinations);
         await this.previewZipFiles();
       } else {
         this.showZipError(result.error || 'Error desconocido durante el procesamiento');
@@ -393,9 +396,30 @@ class ArchidropApp {
     resultsCard.classList.remove('hidden');
   }
 
+  private async handleAutoOpenDestinations(destinations?: string[]): Promise<void> {
+    if (!this.autoOpen || !destinations || destinations.length === 0) {
+      return;
+    }
+
+    try {
+      const uniqueDestinations = Array.from(new Set(destinations));
+      const primaryDestination = uniqueDestinations[0];
+
+      if (primaryDestination) {
+        const openResult = await this.electronAPI.openPath(primaryDestination);
+        if (openResult && openResult.success === false && openResult.error) {
+          console.warn('No se pudo abrir la carpeta de destino:', openResult.error);
+        }
+      }
+    } catch (error) {
+      console.error('Error opening destination folder:', error);
+    }
+  }
+
   private async saveSettings(): Promise<void> {
     try {
       const autoOpen = (this.getElement('auto-open-setting') as HTMLInputElement).checked;
+      this.autoOpen = autoOpen;
       const useDateFolder = (this.getElement('use-date-folder-setting') as HTMLInputElement).checked;
       this.zipUseDateFolder = useDateFolder;
 
@@ -597,6 +621,7 @@ class ArchidropApp {
 
       if (result.success) {
         this.showDateResults(result, operationUsed);
+        await this.handleAutoOpenDestinations(result.destinations);
         await this.previewDateFiles();
       } else {
         const actionLabel = operationUsed === 'copy' ? 'copiar' : 'mover';

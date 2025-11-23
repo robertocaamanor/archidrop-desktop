@@ -90,6 +90,7 @@ export interface ProcessingResult {
   processed: number;
   errors: string[];
   error?: string;
+  destinations: string[];
 }
 
 type ProgressCallback = (progress: ProcessingProgress) => void;
@@ -221,7 +222,8 @@ export async function processFiles(
   const result: ProcessingResult = {
     success: false,
     processed: 0,
-    errors: []
+    errors: [],
+    destinations: []
   };
 
   try {
@@ -274,7 +276,10 @@ export async function processFiles(
       });
 
       try {
-        await processFile(file, archivosPath, useDateFolder);
+        const destination = await processFile(file, archivosPath, useDateFolder);
+        if (destination) {
+          result.destinations.push(destination);
+        }
         result.processed++;
         
         // Delete original file if processing was successful and option is enabled
@@ -300,6 +305,10 @@ export async function processFiles(
       status: 'Procesamiento completado',
       percentage: 100
     });
+
+    if (result.destinations.length > 0) {
+      result.destinations = Array.from(new Set(result.destinations.map(dest => path.resolve(dest))));
+    }
 
     result.success = true;
     return result;
@@ -342,7 +351,7 @@ async function getFilesToProcess(inputPath: string): Promise<string[]> {
   return files;
 }
 
-async function processFile(filePath: string, archivosPath: string, useDateFolder: boolean): Promise<void> {
+async function processFile(filePath: string, archivosPath: string, useDateFolder: boolean): Promise<string | undefined> {
   const fileName = path.basename(filePath, path.extname(filePath));
   const tempDir = path.join(archivosPath, 'temp', fileName);
   
@@ -372,13 +381,14 @@ async function processFile(filePath: string, archivosPath: string, useDateFolder
     console.log(`Extracted ${extractedFiles.length} items from ${path.basename(filePath)}`);
     
     // Process extracted contents using the parsed info from original filename
-    await organizeExtractedFiles(tempDir, archivosPath, fileInfo, useDateFolder);
+    const destinationDir = await organizeExtractedFiles(tempDir, archivosPath, fileInfo, useDateFolder);
     
     // Add delay to ensure all file operations are complete
     await new Promise(resolve => setTimeout(resolve, 500));
     
     // Clean up temporary directory with retries
     await safeRemoveDir(tempDir);
+    return destinationDir;
     
   } catch (error) {
     // Clean up on error with retries
@@ -460,7 +470,7 @@ async function extractWithPowerShell(filePath: string, outputDir: string): Promi
   });
 }
 
-async function organizeExtractedFiles(tempDir: string, archivosPath: string, fileInfo: FileInfo, useDateFolder: boolean): Promise<void> {
+async function organizeExtractedFiles(tempDir: string, archivosPath: string, fileInfo: FileInfo, useDateFolder: boolean): Promise<string> {
   const files = await fs.readdir(tempDir);
   
   // Create month name in Spanish
@@ -487,6 +497,8 @@ async function organizeExtractedFiles(tempDir: string, archivosPath: string, fil
       await fs.move(filePath, targetDirPath, { overwrite: true });
     }
   }
+
+  return targetDir;
 }
 
 interface FileInfo {
@@ -765,7 +777,8 @@ export async function organizeFilesByDate(
   const result: ProcessingResult = {
     success: false,
     processed: 0,
-    errors: []
+    errors: [],
+    destinations: []
   };
 
   try {
@@ -785,6 +798,7 @@ export async function organizeFilesByDate(
     }
 
     const tasks: Array<{ fileName: string; fullPath: string; match: DateMatchInfo }> = [];
+    const destinationSet = new Set<string>();
     const validationErrors: string[] = [];
 
     for (const fileName of selectedFiles) {
@@ -843,6 +857,7 @@ export async function organizeFilesByDate(
         if (normalizedCurrentDir === normalizedTargetDir) {
           console.log(`Archivo ya se encuentra en la carpeta destino: ${task.fileName}`);
           result.processed++;
+          destinationSet.add(normalizedTargetDir);
           continue;
         }
 
@@ -853,6 +868,7 @@ export async function organizeFilesByDate(
           await fs.move(task.fullPath, targetPath, { overwrite: true });
         }
         result.processed++;
+        destinationSet.add(path.resolve(targetDir));
       } catch (error) {
         const actionWord = mode === 'copy' ? 'copiando' : 'moviendo';
         console.error(`Error ${actionWord} el archivo ${task.fileName}:`, error);
@@ -870,6 +886,10 @@ export async function organizeFilesByDate(
     });
 
     result.errors.push(...validationErrors);
+    if (destinationSet.size > 0) {
+      result.destinations = Array.from(destinationSet);
+    }
+
     if (result.processed > 0) {
       result.success = true;
     } else {

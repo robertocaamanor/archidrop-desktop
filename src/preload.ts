@@ -15,6 +15,7 @@ contextBridge.exposeInMainWorld('electronAPI', {
   previewDateFiles: (inputPath: string) => ipcRenderer.invoke('preview-date-files', inputPath),
   startDateProcessing: (inputPath: string, selectedFiles: string[], operation: 'move' | 'copy') =>
     ipcRenderer.invoke('start-date-processing', inputPath, selectedFiles, operation),
+  openPath: (targetPath: string) => ipcRenderer.invoke('open-path', targetPath),
   
   // Listen for processing progress updates
   onZipProcessingProgress: (callback: (progress: any) => void) => {
