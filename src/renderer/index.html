@@ -185,20 +185,22 @@
                                                placeholder="Selecciona la carpeta con los archivos...">
                                     </div>
                                     <div class="flex flex-wrap gap-2">
-                                        <button id="date-select-downloads-btn" 
-                                                class="inline-flex items-center px-4 py-2 border border-gray-300 rounded-md bg-white text-gray-700 hover:bg-gray-50 text-sm font-medium focus:outline-none focus:ring-2 focus:ring-blue-500 focus:ring-offset-2">
-                                            📁 Descargas
-                                        </button>
-                                        <button id="date-select-dropbox-btn" 
-                                                class="inline-flex items-center px-4 py-2 border border-gray-300 rounded-md bg-white text-gray-700 hover:bg-gray-50 text-sm font-medium focus:outline-none focus:ring-2 focus:ring-blue-500 focus:ring-offset-2">
-                                            📦 Dropbox
-                                        </button>
                                         <button id="date-select-custom-btn" 
                                                 class="inline-flex items-center px-4 py-2 border border-gray-300 rounded-md bg-white text-gray-700 hover:bg-gray-50 text-sm font-medium focus:outline-none focus:ring-2 focus:ring-blue-500 focus:ring-offset-2">
                                             🔍 Examinar...
                                         </button>
                                     </div>
                                 </div>
+                            </div>
+
+                            <div class="mb-6">
+                                <span class="block text-sm font-medium text-gray-700 mb-2">Acción a realizar</span>
+                                <button id="date-operation-switch" type="button" role="switch" aria-checked="false" class="flex items-center space-x-3 focus:outline-none focus:ring-2 focus:ring-blue-500 focus:ring-offset-2 rounded-full px-2 py-1">
+                                    <span id="date-operation-switch-label" class="text-sm font-medium text-gray-700">Mover archivos</span>
+                                    <span id="date-operation-switch-track" class="relative inline-flex h-6 w-11 items-center rounded-full bg-gray-300 transition-colors duration-200 ease-in-out">
+                                        <span id="date-operation-switch-thumb" class="inline-block h-5 w-5 transform rounded-full bg-white shadow transition-transform duration-200 ease-in-out translate-x-1"></span>
+                                    </span>
+                                </button>
                             </div>
 
                             <div class="flex justify-end">

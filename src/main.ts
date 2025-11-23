@@ -123,10 +123,10 @@ ipcMain.handle('preview-date-files', async (event, inputPath: string) => {
   }
 });
 
-ipcMain.handle('start-date-processing', async (event, inputPath: string, selectedFiles: string[]) => {
+ipcMain.handle('start-date-processing', async (event, inputPath: string, selectedFiles: string[], operation: 'move' | 'copy' = 'move') => {
   try {
     const { organizeFilesByDate } = await import('./services/fileProcessor');
-    return await organizeFilesByDate(inputPath, selectedFiles, (progress) => {
+    return await organizeFilesByDate(inputPath, selectedFiles, operation, (progress) => {
       event.sender.send('date-processing-progress', progress);
     });
   } catch (error) {

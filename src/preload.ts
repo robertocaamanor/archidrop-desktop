@@ -13,8 +13,8 @@ contextBridge.exposeInMainWorld('electronAPI', {
   startZipProcessing: (inputPath: string, selectedFiles: string[], deleteOriginals: boolean, useDateFolder: boolean = false) => 
     ipcRenderer.invoke('start-zip-processing', inputPath, selectedFiles, deleteOriginals, useDateFolder),
   previewDateFiles: (inputPath: string) => ipcRenderer.invoke('preview-date-files', inputPath),
-  startDateProcessing: (inputPath: string, selectedFiles: string[]) =>
-    ipcRenderer.invoke('start-date-processing', inputPath, selectedFiles),
+  startDateProcessing: (inputPath: string, selectedFiles: string[], operation: 'move' | 'copy') =>
+    ipcRenderer.invoke('start-date-processing', inputPath, selectedFiles, operation),
   
   // Listen for processing progress updates
   onZipProcessingProgress: (callback: (progress: any) => void) => {

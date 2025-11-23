@@ -8,6 +8,7 @@ class ArchidropApp {
   private zipUseDateFolder = false;
   private dateInputPath = '';
   private dateIsProcessing = false;
+  private dateOperation: 'move' | 'copy' = 'move';
 
   constructor() {
     this.electronAPI = (window as any).electronAPI;
@@ -87,14 +88,6 @@ class ArchidropApp {
   }
 
   private initializeDateTab(): void {
-    this.getElement('date-select-downloads-btn').addEventListener('click', () => {
-      void this.selectDateDownloadsFolder();
-    });
-
-    this.getElement('date-select-dropbox-btn').addEventListener('click', () => {
-      void this.selectDateDropboxFolder();
-    });
-
     this.getElement('date-select-custom-btn').addEventListener('click', () => {
       void this.selectDateCustomFolder();
     });
@@ -103,7 +96,14 @@ class ArchidropApp {
       void this.startDateProcessing();
     });
 
+    this.getElement('date-operation-switch').addEventListener('click', () => {
+      this.dateOperation = this.dateOperation === 'copy' ? 'move' : 'copy';
+      this.updateDateOperationSwitch();
+      this.updateDateProcessButtonLabel();
+    });
+
     this.updateDateProcessButton();
+    this.updateDateOperationSwitch();
   }
 
   private async loadSettings(): Promise<void> {
@@ -434,30 +434,6 @@ class ArchidropApp {
     }
   }
 
-  private async selectDateDownloadsFolder(): Promise<void> {
-    try {
-      const result = await this.electronAPI.getDownloadsPath();
-      if (result?.path) {
-        await this.handleDatePathSelection(result.path);
-      }
-    } catch (error) {
-      console.error('Error selecting downloads folder:', error);
-      this.showDateError('Error al seleccionar la carpeta de descargas');
-    }
-  }
-
-  private async selectDateDropboxFolder(): Promise<void> {
-    try {
-      const result = await this.electronAPI.getDropboxPath();
-      if (result?.path) {
-        await this.handleDatePathSelection(result.path);
-      }
-    } catch (error) {
-      console.error('Error selecting Dropbox folder:', error);
-      this.showDateError('Error al seleccionar la carpeta de Dropbox');
-    }
-  }
-
   private async handleDatePathSelection(newPath: string): Promise<void> {
     this.dateInputPath = newPath;
     (this.getElement('date-input-path') as HTMLInputElement).value = newPath;
@@ -471,6 +447,30 @@ class ArchidropApp {
     const hasSelectedFiles = Array.from(checkboxes).some(cb => cb.checked);
     const canProcess = !this.dateIsProcessing && Boolean(this.dateInputPath) && hasSelectedFiles;
     processBtn.disabled = !canProcess;
+    this.updateDateProcessButtonLabel();
+    this.updateDateOperationSwitch();
+  }
+
+  private updateDateProcessButtonLabel(): void {
+    const processBtn = this.getElement('date-process-btn') as HTMLButtonElement;
+    processBtn.textContent = this.dateOperation === 'copy' ? 'Copiar Archivos' : 'Mover Archivos';
+  }
+
+  private updateDateOperationSwitch(): void {
+    const switchBtn = this.getElement('date-operation-switch') as HTMLButtonElement;
+    const label = this.getElement('date-operation-switch-label');
+    const track = this.getElement('date-operation-switch-track');
+    const thumb = this.getElement('date-operation-switch-thumb');
+    const isCopy = this.dateOperation === 'copy';
+
+    label.textContent = isCopy ? 'Copiar archivos' : 'Mover archivos';
+    switchBtn.setAttribute('aria-checked', isCopy ? 'true' : 'false');
+
+    track.classList.remove('bg-gray-300', 'bg-blue-600');
+    track.classList.add(isCopy ? 'bg-blue-600' : 'bg-gray-300');
+
+    thumb.classList.remove('translate-x-1', 'translate-x-6');
+    thumb.classList.add(isCopy ? 'translate-x-6' : 'translate-x-1');
   }
 
   private async previewDateFiles(): Promise<void> {
@@ -575,9 +575,12 @@ class ArchidropApp {
     const selectedFiles = Array.from(checkboxes).map(cb => cb.dataset.filename).filter(Boolean);
 
     if (selectedFiles.length === 0) {
-      this.showDateError('Selecciona al menos un archivo para mover');
+      const actionLabel = this.dateOperation === 'copy' ? 'copiar' : 'mover';
+      this.showDateError(`Selecciona al menos un archivo para ${actionLabel}`);
       return;
     }
+
+    const operationUsed = this.dateOperation;
 
     this.dateIsProcessing = true;
     this.updateDateProcessButton();
@@ -588,18 +591,21 @@ class ArchidropApp {
     try {
       const result = await this.electronAPI.startDateProcessing(
         this.dateInputPath,
-        selectedFiles
+        selectedFiles,
+        operationUsed
       );
 
       if (result.success) {
-        this.showDateResults(result);
+        this.showDateResults(result, operationUsed);
         await this.previewDateFiles();
       } else {
-        this.showDateError(result.error || 'Error desconocido al mover archivos');
+        const actionLabel = operationUsed === 'copy' ? 'copiar' : 'mover';
+        this.showDateError(result.error || `Error desconocido al ${actionLabel} archivos`);
       }
     } catch (error) {
       console.error('Error during date processing:', error);
-      this.showDateError('Error inesperado al mover archivos');
+      const actionLabel = operationUsed === 'copy' ? 'copiar' : 'mover';
+      this.showDateError(`Error inesperado al ${actionLabel} archivos`);
     } finally {
       this.dateIsProcessing = false;
       this.updateDateProcessButton();
@@ -623,7 +629,7 @@ class ArchidropApp {
     totalCount.textContent = progress.total.toString();
   }
 
-  private showDateResults(result: any): void {
+  private showDateResults(result: any, operation: 'move' | 'copy'): void {
     const resultsCard = this.getElement('date-results-card');
     const resultsContent = this.getElement('date-results-content');
 
@@ -634,7 +640,7 @@ class ArchidropApp {
         <svg class="w-5 h-5 mr-2" fill="currentColor" viewBox="0 0 20 20">
           <path fill-rule="evenodd" d="M10 18a8 8 0 100-16 8 8 0 000 16zm3.707-9.293a1 1 0 00-1.414-1.414L9 10.586 7.707 9.293a1 1 0 00-1.414 1.414l2 2a1 1 0 001.414 0l4-4z" clip-rule="evenodd"></path>
         </svg>
-        Archivos movidos correctamente
+        ${operation === 'copy' ? 'Archivos copiados correctamente' : 'Archivos movidos correctamente'}
       </div>`;
       html += `<div class="text-sm text-gray-600">Archivos procesados: ${result.processed}</div>`;
     }

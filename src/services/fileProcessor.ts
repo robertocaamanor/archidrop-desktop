@@ -759,6 +759,7 @@ export async function previewDateFiles(inputPath: string): Promise<DatePreviewRe
 export async function organizeFilesByDate(
   inputPath: string,
   selectedFiles: string[],
+  mode: 'move' | 'copy',
   onProgress: ProgressCallback
 ): Promise<ProcessingResult> {
   const result: ProcessingResult = {
@@ -810,22 +811,24 @@ export async function organizeFilesByDate(
       return result;
     }
 
+    const preparingLabel = mode === 'copy' ? 'Preparando copias...' : 'Preparando movimientos...';
     onProgress({
       current: 0,
       total: tasks.length,
       currentFile: '',
-      status: 'Preparando movimientos...',
+      status: preparingLabel,
       percentage: 0
     });
 
     for (let index = 0; index < tasks.length; index++) {
       const task = tasks[index];
 
+      const actionStatus = mode === 'copy' ? 'Copiando archivo...' : 'Moviendo archivo...';
       onProgress({
         current: index,
         total: tasks.length,
         currentFile: task.fileName,
-        status: 'Moviendo archivo...',
+        status: actionStatus,
         percentage: (index / tasks.length) * 100
       });
 
@@ -844,19 +847,25 @@ export async function organizeFilesByDate(
         }
 
         const targetPath = path.join(targetDir, task.fileName);
-        await fs.move(task.fullPath, targetPath, { overwrite: true });
+        if (mode === 'copy') {
+          await fs.copy(task.fullPath, targetPath, { overwrite: true });
+        } else {
+          await fs.move(task.fullPath, targetPath, { overwrite: true });
+        }
         result.processed++;
       } catch (error) {
-        console.error(`Error moving file ${task.fileName}:`, error);
-        result.errors.push(`Error moviendo ${task.fileName}: ${error instanceof Error ? error.message : 'Error desconocido'}`);
+        const actionWord = mode === 'copy' ? 'copiando' : 'moviendo';
+        console.error(`Error ${actionWord} el archivo ${task.fileName}:`, error);
+        result.errors.push(`Error ${actionWord} ${task.fileName}: ${error instanceof Error ? error.message : 'Error desconocido'}`);
       }
     }
 
+    const finishedLabel = mode === 'copy' ? 'Copia completada' : 'Movimiento completado';
     onProgress({
       current: tasks.length,
       total: tasks.length,
       currentFile: '',
-      status: 'Movimiento completado',
+      status: finishedLabel,
       percentage: 100
     });
 
