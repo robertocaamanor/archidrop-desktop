@@ -99,16 +99,38 @@ ipcMain.handle('preview-files', async (event, inputPath: string, useDateFolder: 
   }
 });
 
-ipcMain.handle('start-processing', async (event, inputPath: string, selectedFiles: string[], deleteOriginals: boolean, useDateFolder: boolean = false) => {
+ipcMain.handle('start-zip-processing', async (event, inputPath: string, selectedFiles: string[], deleteOriginals: boolean, useDateFolder: boolean = false) => {
   try {
     // Import the processing logic
     const { processFiles } = await import('./services/fileProcessor');
     
     return await processFiles(inputPath, selectedFiles, deleteOriginals, useDateFolder, (progress) => {
-      event.sender.send('processing-progress', progress);
+      event.sender.send('zip-processing-progress', progress);
     });
   } catch (error) {
     console.error('Error processing files:', error);
+    return { success: false, error: error instanceof Error ? error.message : 'Error desconocido' };
+  }
+});
+
+ipcMain.handle('preview-date-files', async (event, inputPath: string) => {
+  try {
+    const { previewDateFiles } = await import('./services/fileProcessor');
+    return await previewDateFiles(inputPath);
+  } catch (error) {
+    console.error('Error previewing date files:', error);
+    return { success: false, error: error instanceof Error ? error.message : 'Error desconocido' };
+  }
+});
+
+ipcMain.handle('start-date-processing', async (event, inputPath: string, selectedFiles: string[]) => {
+  try {
+    const { organizeFilesByDate } = await import('./services/fileProcessor');
+    return await organizeFilesByDate(inputPath, selectedFiles, (progress) => {
+      event.sender.send('date-processing-progress', progress);
+    });
+  } catch (error) {
+    console.error('Error organizing files by date:', error);
     return { success: false, error: error instanceof Error ? error.message : 'Error desconocido' };
   }
 });

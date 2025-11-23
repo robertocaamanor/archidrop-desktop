@@ -13,6 +13,34 @@ const MONTH_NAMES_LOWER = [
   'julio', 'agosto', 'septiembre', 'octubre', 'noviembre', 'diciembre'
 ];
 
+const SPANISH_MONTHS_MAP: Record<string, number> = {
+  enero: 1,
+  febrero: 2,
+  marzo: 3,
+  abril: 4,
+  mayo: 5,
+  junio: 6,
+  julio: 7,
+  agosto: 8,
+  septiembre: 9,
+  setiembre: 9,
+  octubre: 10,
+  noviembre: 11,
+  diciembre: 12,
+  ene: 1,
+  feb: 2,
+  mar: 3,
+  abr: 4,
+  may: 5,
+  jun: 6,
+  jul: 7,
+  ago: 8,
+  sep: 9,
+  oct: 10,
+  nov: 11,
+  dic: 12,
+};
+
 // Helper function to get Dropbox path
 function getDropboxPath(): string {
   const userProfile = os.homedir();
@@ -79,6 +107,20 @@ export interface PreviewItem {
 export interface PreviewResult {
   success: boolean;
   items: PreviewItem[];
+  totalFiles: number;
+  processableFiles: number;
+  error?: string;
+}
+
+export interface DatePreviewItem {
+  fileName: string;
+  targetPath: string;
+  targetPathLabel: string;
+}
+
+export interface DatePreviewResult {
+  success: boolean;
+  items: DatePreviewItem[];
   totalFiles: number;
   processableFiles: number;
   error?: string;
@@ -478,15 +520,6 @@ function parseFileName(fileName: string): FileInfo | null {
   ];
 
   // Spanish month names mapping
-  const spanishMonths: { [key: string]: number } = {
-    'enero': 1, 'febrero': 2, 'marzo': 3, 'abril': 4,
-    'mayo': 5, 'junio': 6, 'julio': 7, 'agosto': 8,
-    'septiembre': 9, 'octubre': 10, 'noviembre': 11, 'diciembre': 12,
-    'ene': 1, 'feb': 2, 'mar': 3, 'abr': 4,
-    'may': 5, 'jun': 6, 'jul': 7, 'ago': 8,
-    'sep': 9, 'oct': 10, 'nov': 11, 'dic': 12
-  };
-
   for (let i = 0; i < patterns.length; i++) {
     const pattern = patterns[i];
     const match = nameWithoutExt.match(pattern);
@@ -506,7 +539,7 @@ function parseFileName(fileName: string): FileInfo | null {
       day = parseInt(match[2], 10);
       const monthName = match[3].toLowerCase();
       year = parseInt(match[4], 10);
-      month = spanishMonths[monthName] || 0;
+      month = SPANISH_MONTHS_MAP[monthName] || 0;
       
       console.log(`Parsed pattern 1: diary="${diary}", day=${day}, month="${monthName}"(${month}), year=${year}`);
     } else if (i === 1 || i === 2) {
@@ -514,7 +547,7 @@ function parseFileName(fileName: string): FileInfo | null {
       diary = match[1].trim();
       const monthName = match[2].toLowerCase();
       year = parseInt(match[3], 10);
-      month = spanishMonths[monthName] || 0;
+      month = SPANISH_MONTHS_MAP[monthName] || 0;
       
       console.log(`Parsed pattern 2/3: diary="${diary}", month="${monthName}"(${month}), year=${year}`);
     } else if (i === 3) {
@@ -635,4 +668,209 @@ function getDateFolderName(fileInfo: FileInfo): string | undefined {
 
   const monthNameCapitalized = monthNameLower.charAt(0).toUpperCase() + monthNameLower.slice(1);
   return `${monthNameCapitalized} de ${year}`;
+}
+
+interface DateMatchInfo {
+  day: number;
+  month: number;
+  year: number;
+  folderLabel: string;
+}
+
+const DATE_PATTERN = /(\d{1,2})\s+de\s+([a-záéíóúñ]+)\s+de(?:l)?\s+(\d{4})/i;
+
+function extractDateFromFilename(fileName: string): DateMatchInfo | null {
+  const match = DATE_PATTERN.exec(fileName.toLowerCase());
+  if (!match) {
+    return null;
+  }
+
+  const day = parseInt(match[1], 10);
+  const monthName = match[2];
+  const year = parseInt(match[3], 10);
+
+  const month = SPANISH_MONTHS_MAP[monthName] || 0;
+
+  if (!isValidDateComponents(day, month, year)) {
+    return null;
+  }
+
+  const monthNameLower = MONTH_NAMES_LOWER[month];
+  if (!monthNameLower) {
+    return null;
+  }
+
+  const folderLabel = `${day} de ${monthNameLower} de ${year}`;
+  return { day, month, year, folderLabel };
+}
+
+function isValidDateComponents(day: number, month: number, year: number): boolean {
+  const validDay = day >= 1 && day <= 31;
+  const validMonth = month >= 1 && month <= 12;
+  const validYear = year >= 1900 && year <= 2100;
+  return validDay && validMonth && validYear;
+}
+
+export async function previewDateFiles(inputPath: string): Promise<DatePreviewResult> {
+  const result: DatePreviewResult = {
+    success: false,
+    items: [],
+    totalFiles: 0,
+    processableFiles: 0
+  };
+
+  try {
+    if (!await fs.pathExists(inputPath)) {
+      throw new Error(`La carpeta de entrada no existe: ${inputPath}`);
+    }
+
+    const entries = await fs.readdir(inputPath);
+
+    for (const entry of entries) {
+      const fullPath = path.join(inputPath, entry);
+      const stat = await fs.stat(fullPath);
+
+      if (!stat.isFile()) {
+        continue;
+      }
+
+      result.totalFiles++;
+
+      const match = extractDateFromFilename(entry);
+      if (match) {
+        result.items.push({
+          fileName: entry,
+          targetPath: path.join(inputPath, match.folderLabel),
+          targetPathLabel: match.folderLabel
+        });
+        result.processableFiles++;
+      }
+    }
+
+    result.success = true;
+    return result;
+  } catch (error) {
+    console.error('Error in previewDateFiles:', error);
+    result.error = error instanceof Error ? error.message : 'Error desconocido';
+    return result;
+  }
+}
+
+export async function organizeFilesByDate(
+  inputPath: string,
+  selectedFiles: string[],
+  onProgress: ProgressCallback
+): Promise<ProcessingResult> {
+  const result: ProcessingResult = {
+    success: false,
+    processed: 0,
+    errors: []
+  };
+
+  try {
+    if (!await fs.pathExists(inputPath)) {
+      throw new Error(`La carpeta de entrada no existe: ${inputPath}`);
+    }
+
+    const entries = await fs.readdir(inputPath);
+    const fileMap = new Map<string, string>();
+
+    for (const entry of entries) {
+      const fullPath = path.join(inputPath, entry);
+      const stat = await fs.stat(fullPath);
+      if (stat.isFile()) {
+        fileMap.set(entry, fullPath);
+      }
+    }
+
+    const tasks: Array<{ fileName: string; fullPath: string; match: DateMatchInfo }> = [];
+    const validationErrors: string[] = [];
+
+    for (const fileName of selectedFiles) {
+      const fullPath = fileMap.get(fileName);
+      if (!fullPath) {
+        validationErrors.push(`No se encontró el archivo ${fileName} en la carpeta seleccionada`);
+        continue;
+      }
+
+      const match = extractDateFromFilename(fileName);
+      if (!match) {
+        validationErrors.push(`No se detectó una fecha válida en ${fileName}`);
+        continue;
+      }
+
+      tasks.push({ fileName, fullPath, match });
+    }
+
+    if (tasks.length === 0) {
+      result.errors.push(...validationErrors);
+      if (validationErrors.length === 0) {
+        result.error = 'No se encontraron archivos válidos para mover';
+      }
+      return result;
+    }
+
+    onProgress({
+      current: 0,
+      total: tasks.length,
+      currentFile: '',
+      status: 'Preparando movimientos...',
+      percentage: 0
+    });
+
+    for (let index = 0; index < tasks.length; index++) {
+      const task = tasks[index];
+
+      onProgress({
+        current: index,
+        total: tasks.length,
+        currentFile: task.fileName,
+        status: 'Moviendo archivo...',
+        percentage: (index / tasks.length) * 100
+      });
+
+      try {
+        const targetDir = path.join(inputPath, task.match.folderLabel);
+        await fs.ensureDir(targetDir);
+
+        const currentDir = path.dirname(task.fullPath);
+        const normalizedCurrentDir = path.resolve(currentDir);
+        const normalizedTargetDir = path.resolve(targetDir);
+
+        if (normalizedCurrentDir === normalizedTargetDir) {
+          console.log(`Archivo ya se encuentra en la carpeta destino: ${task.fileName}`);
+          result.processed++;
+          continue;
+        }
+
+        const targetPath = path.join(targetDir, task.fileName);
+        await fs.move(task.fullPath, targetPath, { overwrite: true });
+        result.processed++;
+      } catch (error) {
+        console.error(`Error moving file ${task.fileName}:`, error);
+        result.errors.push(`Error moviendo ${task.fileName}: ${error instanceof Error ? error.message : 'Error desconocido'}`);
+      }
+    }
+
+    onProgress({
+      current: tasks.length,
+      total: tasks.length,
+      currentFile: '',
+      status: 'Movimiento completado',
+      percentage: 100
+    });
+
+    result.errors.push(...validationErrors);
+    if (result.processed > 0) {
+      result.success = true;
+    } else {
+      result.success = result.errors.length === 0;
+    }
+
+    return result;
+  } catch (error) {
+    console.error('Error organizing files by date:', error);
+    result.error = error instanceof Error ? error.message : 'Error desconocido';
+    return result;
+  }
 }

@@ -29,128 +29,236 @@
         <!-- Main Content -->
         <main class="flex-1 max-w-7xl mx-auto py-6 sm:px-6 lg:px-8">
             <div class="px-4 py-6 sm:px-0">
-                <!-- Configuration Card -->
-                <div class="bg-white overflow-hidden shadow rounded-lg mb-6">
-                    <div class="px-4 py-5 sm:p-6">
-                        <h3 class="text-lg leading-6 font-medium text-gray-900 mb-4">Configuración</h3>
-                        
-                        <!-- Input Folder Selection -->
-                        <div class="mb-6">
-                            <label class="block text-sm font-medium text-gray-700 mb-2">
-                                Carpeta de archivos a procesar
-                            </label>
-                            <div class="space-y-3">
-                                <div class="flex rounded-md shadow-sm">
-                                    <input type="text" id="input-path" readonly 
-                                           class="flex-1 min-w-0 block w-full px-3 py-2 rounded-md border border-gray-300 bg-gray-50 text-gray-900 focus:ring-blue-500 focus:border-blue-500 sm:text-sm" 
-                                           placeholder="Selecciona la carpeta con los archivos...">
-                                </div>
-                                <div class="flex flex-wrap gap-2">
-                                    <button id="select-downloads-btn" 
-                                            class="inline-flex items-center px-4 py-2 border border-gray-300 rounded-md bg-white text-gray-700 hover:bg-gray-50 text-sm font-medium focus:outline-none focus:ring-2 focus:ring-blue-500 focus:ring-offset-2">
-                                        📁 Descargas
-                                    </button>
-                                    <button id="select-dropbox-btn" 
-                                            class="inline-flex items-center px-4 py-2 border border-gray-300 rounded-md bg-white text-gray-700 hover:bg-gray-50 text-sm font-medium focus:outline-none focus:ring-2 focus:ring-blue-500 focus:ring-offset-2">
-                                        📦 Dropbox
-                                    </button>
-                                    <button id="select-custom-btn" 
-                                            class="inline-flex items-center px-4 py-2 border border-gray-300 rounded-md bg-white text-gray-700 hover:bg-gray-50 text-sm font-medium focus:outline-none focus:ring-2 focus:ring-blue-500 focus:ring-offset-2">
-                                        🔍 Examinar...
-                                    </button>
+                <div class="mb-6">
+                    <nav class="flex space-x-2" aria-label="Tabs">
+                        <button id="tab-zip" data-tab="zip" class="tab-button inline-flex items-center px-4 py-2 text-sm font-medium rounded-md bg-blue-100 text-blue-700">
+                            Extracción de ZIPs
+                        </button>
+                        <button id="tab-date" data-tab="date" class="tab-button inline-flex items-center px-4 py-2 text-sm font-medium rounded-md text-gray-600 hover:text-gray-800 hover:bg-gray-100">
+                            Organizar por fecha
+                        </button>
+                    </nav>
+                </div>
+
+                <div data-tab-panel="zip" class="space-y-6 tab-panel">
+                    <!-- Configuration Card -->
+                    <div class="bg-white overflow-hidden shadow rounded-lg">
+                        <div class="px-4 py-5 sm:p-6">
+                            <h3 class="text-lg leading-6 font-medium text-gray-900 mb-4">Configuración</h3>
+                            
+                            <!-- Input Folder Selection -->
+                            <div class="mb-6">
+                                <label class="block text-sm font-medium text-gray-700 mb-2">
+                                    Carpeta de archivos a procesar
+                                </label>
+                                <div class="space-y-3">
+                                    <div class="flex rounded-md shadow-sm">
+                                        <input type="text" id="zip-input-path" readonly 
+                                               class="flex-1 min-w-0 block w-full px-3 py-2 rounded-md border border-gray-300 bg-gray-50 text-gray-900 focus:ring-blue-500 focus:border-blue-500 sm:text-sm" 
+                                               placeholder="Selecciona la carpeta con los archivos...">
+                                    </div>
+                                    <div class="flex flex-wrap gap-2">
+                                        <button id="zip-select-downloads-btn" 
+                                                class="inline-flex items-center px-4 py-2 border border-gray-300 rounded-md bg-white text-gray-700 hover:bg-gray-50 text-sm font-medium focus:outline-none focus:ring-2 focus:ring-blue-500 focus:ring-offset-2">
+                                            📁 Descargas
+                                        </button>
+                                        <button id="zip-select-dropbox-btn" 
+                                                class="inline-flex items-center px-4 py-2 border border-gray-300 rounded-md bg-white text-gray-700 hover:bg-gray-50 text-sm font-medium focus:outline-none focus:ring-2 focus:ring-blue-500 focus:ring-offset-2">
+                                            📦 Dropbox
+                                        </button>
+                                        <button id="zip-select-custom-btn" 
+                                                class="inline-flex items-center px-4 py-2 border border-gray-300 rounded-md bg-white text-gray-700 hover:bg-gray-50 text-sm font-medium focus:outline-none focus:ring-2 focus:ring-blue-500 focus:ring-offset-2">
+                                            🔍 Examinar...
+                                        </button>
+                                    </div>
                                 </div>
                             </div>
-                        </div>
 
-                        <!-- Dropbox Info -->
-                        <div class="mb-6">
-                            <div class="bg-blue-50 p-4 rounded-md">
-                                <div class="flex">
-                                    <div class="flex-shrink-0">
-                                        <svg class="h-5 w-5 text-blue-400" fill="currentColor" viewBox="0 0 20 20">
-                                            <path fill-rule="evenodd" d="M18 10a8 8 0 11-16 0 8 8 0 0116 0zm-7-4a1 1 0 11-2 0 1 1 0 012 0zM9 9a1 1 0 000 2v3a1 1 0 001 1h1a1 1 0 100-2v-3a1 1 0 00-1-1H9z" clip-rule="evenodd"></path>
-                                        </svg>
-                                    </div>
-                                    <div class="ml-3">
-                                        <h3 class="text-sm font-medium text-blue-800">
-                                            Destino automático
-                                        </h3>
-                                        <div class="mt-2 text-sm text-blue-700">
-                                            <p>Los archivos se organizarán automáticamente en: <br><strong>Dropbox/Archivos/[Año]/[Mes]/[Diario]</strong></p>
-                                            <p class="mt-2">Puedes activar en Configuración la creación de una subcarpeta con la fecha correspondiente.</p>
+                            <!-- Dropbox Info -->
+                            <div class="mb-6">
+                                <div class="bg-blue-50 p-4 rounded-md">
+                                    <div class="flex">
+                                        <div class="flex-shrink-0">
+                                            <svg class="h-5 w-5 text-blue-400" fill="currentColor" viewBox="0 0 20 20">
+                                                <path fill-rule="evenodd" d="M18 10a8 8 0 11-16 0 8 8 0 0116 0zm-7-4a1 1 0 11-2 0 1 1 0 012 0zM9 9a1 1 0 000 2v3a1 1 0 001 1h1a1 1 0 100-2v-3a1 1 0 00-1-1H9z" clip-rule="evenodd"></path>
+                                            </svg>
+                                        </div>
+                                        <div class="ml-3">
+                                            <h3 class="text-sm font-medium text-blue-800">
+                                                Destino automático
+                                            </h3>
+                                            <div class="mt-2 text-sm text-blue-700">
+                                                <p>Los archivos se organizarán automáticamente en: <br><strong>Dropbox/Archivos/[Año]/[Mes]/[Diario]</strong></p>
+                                                <p class="mt-2">Puedes activar en Configuración la creación de una subcarpeta con la fecha correspondiente.</p>
+                                            </div>
                                         </div>
                                     </div>
                                 </div>
                             </div>
-                        </div>
 
-                        <!-- Action Buttons -->
-                        <div class="flex justify-end">
-                            <button id="process-btn" disabled
-                                    class="disabled:opacity-50 disabled:cursor-not-allowed bg-blue-600 hover:bg-blue-700 text-white font-medium py-2 px-4 rounded-md focus:outline-none focus:ring-2 focus:ring-blue-500 focus:ring-offset-2">
-                                Iniciar Procesamiento
-                            </button>
-                        </div>
-                    </div>
-                </div>
-
-                <!-- Preview Card -->
-                <div id="preview-card" class="bg-white overflow-hidden shadow rounded-lg hidden">
-                    <div class="px-4 py-5 sm:p-6">
-                        <div class="flex items-center justify-between mb-4">
-                            <h3 class="text-lg leading-6 font-medium text-gray-900">Archivos Encontrados</h3>
-                            <div class="flex items-center space-x-3">
-                                <button id="select-all-btn" class="text-sm text-blue-600 hover:text-blue-800 font-medium">
-                                    Seleccionar todos
+                            <!-- Action Buttons -->
+                            <div class="flex justify-end">
+                                <button id="zip-process-btn" disabled
+                                        class="disabled:opacity-50 disabled:cursor-not-allowed bg-blue-600 hover:bg-blue-700 text-white font-medium py-2 px-4 rounded-md focus:outline-none focus:ring-2 focus:ring-blue-500 focus:ring-offset-2">
+                                    Iniciar Procesamiento
                                 </button>
-                                <span class="inline-flex items-center px-2.5 py-0.5 rounded-full text-xs font-medium bg-green-100 text-green-800">
-                                    <span id="selected-count">0</span>/<span id="preview-count">0</span> seleccionados
-                                </span>
                             </div>
                         </div>
-                        
-                        <div class="mb-4">
-                            <label class="flex items-center space-x-2 text-sm text-gray-600">
-                                <input type="checkbox" id="delete-originals" class="rounded border-gray-300 text-blue-600 focus:ring-blue-500">
-                                <span>Eliminar archivos ZIP originales después del procesamiento exitoso</span>
-                            </label>
+                    </div>
+
+                    <!-- Preview Card -->
+                    <div id="zip-preview-card" class="bg-white overflow-hidden shadow rounded-lg hidden">
+                        <div class="px-4 py-5 sm:p-6">
+                            <div class="flex items-center justify-between mb-4">
+                                <h3 class="text-lg leading-6 font-medium text-gray-900">Archivos Encontrados</h3>
+                                <div class="flex items-center space-x-3">
+                                    <button id="zip-select-all-btn" class="text-sm text-blue-600 hover:text-blue-800 font-medium">
+                                        Seleccionar todos
+                                    </button>
+                                    <span class="inline-flex items-center px-2.5 py-0.5 rounded-full text-xs font-medium bg-green-100 text-green-800">
+                                        <span id="zip-selected-count">0</span>/<span id="zip-preview-count">0</span> seleccionados
+                                    </span>
+                                </div>
+                            </div>
+                            
+                            <div class="mb-4">
+                                <label class="flex items-center space-x-2 text-sm text-gray-600">
+                                    <input type="checkbox" id="zip-delete-originals" class="rounded border-gray-300 text-blue-600 focus:ring-blue-500">
+                                    <span>Eliminar archivos ZIP originales después del procesamiento exitoso</span>
+                                </label>
+                            </div>
+                            
+                            <div class="max-h-80 overflow-y-auto">
+                                <div id="zip-preview-content"></div>
+                            </div>
                         </div>
-                        
-                        <div class="max-h-80 overflow-y-auto">
-                            <div id="preview-content"></div>
+                    </div>
+
+                    <!-- Progress Card -->
+                    <div id="zip-progress-card" class="bg-white overflow-hidden shadow rounded-lg hidden">
+                        <div class="px-4 py-5 sm:p-6">
+                            <h3 class="text-lg leading-6 font-medium text-gray-900 mb-4">Procesando Archivos...</h3>
+                            
+                            <!-- Progress Bar -->
+                            <div class="mb-4">
+                                <div class="flex justify-between text-sm text-gray-600 mb-1">
+                                    <span id="zip-progress-text">Iniciando...</span>
+                                    <span id="zip-progress-percentage">0%</span>
+                                </div>
+                                <div class="w-full bg-gray-200 rounded-full h-2">
+                                    <div id="zip-progress-bar" class="bg-blue-600 h-2 rounded-full transition-all duration-300" style="width: 0%"></div>
+                                </div>
+                            </div>
+
+                            <!-- Current File Info -->
+                            <div class="text-sm text-gray-500">
+                                <div>Archivo actual: <span id="zip-current-file" class="font-medium">-</span></div>
+                                <div>Procesados: <span id="zip-processed-count" class="font-medium">0</span> / <span id="zip-total-count" class="font-medium">0</span></div>
+                            </div>
+                        </div>
+                    </div>
+
+                    <!-- Results Card -->
+                    <div id="zip-results-card" class="bg-white overflow-hidden shadow rounded-lg hidden">
+                        <div class="px-4 py-5 sm:p-6">
+                            <h3 class="text-lg leading-6 font-medium text-gray-900 mb-4">Resultados</h3>
+                            <div id="zip-results-content"></div>
                         </div>
                     </div>
                 </div>
 
-                <!-- Progress Card -->
-                <div id="progress-card" class="bg-white overflow-hidden shadow rounded-lg hidden">
-                    <div class="px-4 py-5 sm:p-6">
-                        <h3 class="text-lg leading-6 font-medium text-gray-900 mb-4">Procesando Archivos...</h3>
-                        
-                        <!-- Progress Bar -->
-                        <div class="mb-4">
-                            <div class="flex justify-between text-sm text-gray-600 mb-1">
-                                <span id="progress-text">Iniciando...</span>
-                                <span id="progress-percentage">0%</span>
-                            </div>
-                            <div class="w-full bg-gray-200 rounded-full h-2">
-                                <div id="progress-bar" class="bg-blue-600 h-2 rounded-full transition-all duration-300" style="width: 0%"></div>
-                            </div>
-                        </div>
+                <div data-tab-panel="date" class="space-y-6 tab-panel hidden">
+                    <!-- Date Organizer Configuration -->
+                    <div class="bg-white overflow-hidden shadow rounded-lg">
+                        <div class="px-4 py-5 sm:p-6">
+                            <h3 class="text-lg leading-6 font-medium text-gray-900 mb-2">Organizar archivos por fecha</h3>
+                            <p class="text-sm text-gray-600 mb-6">Analiza el nombre de los archivos para detectar fechas con el formato "1 de enero de 1988" y mueve cada archivo a una subcarpeta con su fecha correspondiente.</p>
 
-                        <!-- Current File Info -->
-                        <div class="text-sm text-gray-500">
-                            <div>Archivo actual: <span id="current-file" class="font-medium">-</span></div>
-                            <div>Procesados: <span id="processed-count" class="font-medium">0</span> / <span id="total-count" class="font-medium">0</span></div>
+                            <div class="mb-6">
+                                <label class="block text-sm font-medium text-gray-700 mb-2">
+                                    Carpeta de archivos a organizar
+                                </label>
+                                <div class="space-y-3">
+                                    <div class="flex rounded-md shadow-sm">
+                                        <input type="text" id="date-input-path" readonly 
+                                               class="flex-1 min-w-0 block w-full px-3 py-2 rounded-md border border-gray-300 bg-gray-50 text-gray-900 focus:ring-blue-500 focus:border-blue-500 sm:text-sm" 
+                                               placeholder="Selecciona la carpeta con los archivos...">
+                                    </div>
+                                    <div class="flex flex-wrap gap-2">
+                                        <button id="date-select-downloads-btn" 
+                                                class="inline-flex items-center px-4 py-2 border border-gray-300 rounded-md bg-white text-gray-700 hover:bg-gray-50 text-sm font-medium focus:outline-none focus:ring-2 focus:ring-blue-500 focus:ring-offset-2">
+                                            📁 Descargas
+                                        </button>
+                                        <button id="date-select-dropbox-btn" 
+                                                class="inline-flex items-center px-4 py-2 border border-gray-300 rounded-md bg-white text-gray-700 hover:bg-gray-50 text-sm font-medium focus:outline-none focus:ring-2 focus:ring-blue-500 focus:ring-offset-2">
+                                            📦 Dropbox
+                                        </button>
+                                        <button id="date-select-custom-btn" 
+                                                class="inline-flex items-center px-4 py-2 border border-gray-300 rounded-md bg-white text-gray-700 hover:bg-gray-50 text-sm font-medium focus:outline-none focus:ring-2 focus:ring-blue-500 focus:ring-offset-2">
+                                            🔍 Examinar...
+                                        </button>
+                                    </div>
+                                </div>
+                            </div>
+
+                            <div class="flex justify-end">
+                                <button id="date-process-btn" disabled
+                                        class="disabled:opacity-50 disabled:cursor-not-allowed bg-blue-600 hover:bg-blue-700 text-white font-medium py-2 px-4 rounded-md focus:outline-none focus:ring-2 focus:ring-blue-500 focus:ring-offset-2">
+                                    Mover Archivos
+                                </button>
+                            </div>
                         </div>
                     </div>
-                </div>
 
-                <!-- Results Card -->
-                <div id="results-card" class="bg-white overflow-hidden shadow rounded-lg hidden">
-                    <div class="px-4 py-5 sm:p-6">
-                        <h3 class="text-lg leading-6 font-medium text-gray-900 mb-4">Resultados</h3>
-                        <div id="results-content"></div>
+                    <!-- Date Preview Card -->
+                    <div id="date-preview-card" class="bg-white overflow-hidden shadow rounded-lg hidden">
+                        <div class="px-4 py-5 sm:p-6">
+                            <div class="flex items-center justify-between mb-4">
+                                <h3 class="text-lg leading-6 font-medium text-gray-900">Archivos detectados</h3>
+                                <div class="flex items-center space-x-3">
+                                    <button id="date-select-all-btn" class="text-sm text-blue-600 hover:text-blue-800 font-medium">
+                                        Seleccionar todos
+                                    </button>
+                                    <span class="inline-flex items-center px-2.5 py-0.5 rounded-full text-xs font-medium bg-green-100 text-green-800">
+                                        <span id="date-selected-count">0</span>/<span id="date-preview-count">0</span> seleccionados
+                                    </span>
+                                </div>
+                            </div>
+
+                            <div class="max-h-80 overflow-y-auto">
+                                <div id="date-preview-content"></div>
+                            </div>
+                        </div>
+                    </div>
+
+                    <!-- Date Progress Card -->
+                    <div id="date-progress-card" class="bg-white overflow-hidden shadow rounded-lg hidden">
+                        <div class="px-4 py-5 sm:p-6">
+                            <h3 class="text-lg leading-6 font-medium text-gray-900 mb-4">Moviendo archivos...</h3>
+
+                            <div class="mb-4">
+                                <div class="flex justify-between text-sm text-gray-600 mb-1">
+                                    <span id="date-progress-text">Iniciando...</span>
+                                    <span id="date-progress-percentage">0%</span>
+                                </div>
+                                <div class="w-full bg-gray-200 rounded-full h-2">
+                                    <div id="date-progress-bar" class="bg-blue-600 h-2 rounded-full transition-all duration-300" style="width: 0%"></div>
+                                </div>
+                            </div>
+
+                            <div class="text-sm text-gray-500">
+                                <div>Archivo actual: <span id="date-current-file" class="font-medium">-</span></div>
+                                <div>Procesados: <span id="date-processed-count" class="font-medium">0</span> / <span id="date-total-count" class="font-medium">0</span></div>
+                            </div>
+                        </div>
+                    </div>
+
+                    <!-- Date Results Card -->
+                    <div id="date-results-card" class="bg-white overflow-hidden shadow rounded-lg hidden">
+                        <div class="px-4 py-5 sm:p-6">
+                            <h3 class="text-lg leading-6 font-medium text-gray-900 mb-4">Resultados</h3>
+                            <div id="date-results-content"></div>
+                        </div>
                     </div>
                 </div>
             </div>
